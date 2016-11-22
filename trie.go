@@ -81,6 +81,14 @@ type Trie struct {
 //  // node2.parentNode == node1
 //  // node2 == node3
 //
+// The defined pattern can contain three types of parameters:
+//
+// | Syntax | Description |
+// |--------|------|
+// | `:name` | named parameter |
+// | `:name*` | named with catch-all parameter |
+// | `:name(regexp)` | named with regexp parameter |
+//
 func (t *Trie) Define(pattern string) *Node {
 	if strings.Contains(pattern, "//") {
 		panic(fmt.Errorf(`Multi-slash exist: "%s"`, pattern))
@@ -99,50 +107,6 @@ func (t *Trie) Define(pattern string) *Node {
 // includes	*Node, Params and Tsr flag when matching success, otherwise a nil.
 //
 //  matched := trie.Match("/a/b")
-//
-// The defined pattern can contain three types of parameters:
-//
-//  Syntax         Type
-//  :name          named parameter
-//  :name*         named with catch-all parameter
-//  :name(regexp)  named with regexp parameter
-//
-// Named parameters are dynamic path segments. They match anything until the
-// next '/' or the path end:
-//
-//  Defined: /api/:type/:ID
-//
-//  Requests:
-//   /api/user/123             matched: type="user", ID="123"
-//   /api/user                 no match
-//   /api/user/123/comments    no match
-//
-// Named with catch-all parameters match anything until the path end, including the
-// directory index (the '/' before the catch-all). Since they match anything
-// until the end, catch-all parameters must always be the final path element.
-//
-//  Defined: /files/:filepath*
-//
-//  Requests:
-//   /files                              no match
-//   /files/LICENSE                      matched: filepath="LICENSE"
-//   /files/templates/article.html       matched: filepath="templates/article.html"
-//
-// Named with regexp parameters match anything using regexp until the
-// next '/' or the path end:
-//
-//  Defined: /api/:type/:ID(^\\d+$)
-//
-//  Requests:
-//   /api/user/123             matched: type="user", ID="123"
-//   /api/user                 no match
-//   /api/user/abc             no match
-//   /api/user/123/comments    no match
-//
-// The value of parameters is saved on the matched.Params. Retrieve the value of a parameter by name:
-//
-//  type := matched.Params["type"]
-//  id   := matched.Params["ID"]
 //
 func (t *Trie) Match(path string) *Matched {
 	_path := path
