@@ -109,26 +109,25 @@ func (t *Trie) Define(pattern string) *Node {
 //  matched := trie.Match("/a/b")
 //
 func (t *Trie) Match(path string) *Matched {
-	_path := path
 	parent := t.root
-	if t.fpr {
-		path = fixPath(_path)
-	}
-	frags := strings.Split(strings.TrimPrefix(path, "/"), "/")
-
 	res := &Matched{}
-	for i, frag := range frags {
-		_frag := frag
-		if t.ignoreCase {
-			_frag = strings.ToLower(frag)
-		}
+	fixedLen := len(path)
+	if t.fpr {
+		path = fixPath(path)
+		fixedLen -= len(path)
+	}
 
-		node, named := matchNode(parent, _frag)
+	frags := strings.Split(strings.TrimPrefix(path, "/"), "/")
+	for i, frag := range frags {
+		node, named := matchNode(parent, frag)
+		if node == nil && t.ignoreCase {
+			node, named = matchNode(parent, strings.ToLower(frag))
+		}
 		if node == nil {
 			// TrailingSlashRedirect: /acb/efg/ -> /acb/efg
 			if t.tsr && frag == "" && len(frags) == (i+1) && parent.endpoint {
 				res.TSR = path[:len(path)-1]
-				if t.fpr && path != _path {
+				if t.fpr && fixedLen > 0 {
 					res.FPR = res.TSR
 					res.TSR = ""
 				}
@@ -152,14 +151,14 @@ func (t *Trie) Match(path string) *Matched {
 
 	if parent.endpoint {
 		res.Node = parent
-		if t.fpr && path != _path {
+		if t.fpr && fixedLen > 0 {
 			res.FPR = path
 			res.Node = nil
 		}
 	} else if t.tsr && parent.literalChildren[""] != nil {
 		// TrailingSlashRedirect: /acb/efg -> /acb/efg/
 		res.TSR = path + "/"
-		if t.fpr && path != _path {
+		if t.fpr && fixedLen > 0 {
 			res.FPR = res.TSR
 			res.TSR = ""
 		}

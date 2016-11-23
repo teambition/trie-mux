@@ -164,6 +164,23 @@ id   := matched.Params("ID")
 
 https://godoc.org/github.com/teambition/trie-mux
 
+## Bench
+
+```bash
+go test -bench=. ./bench
+```
+
+```
+GithubAPI Routes: 203
+   trie-mux: 85408 Bytes
+   HttpRouter: 37464 Bytes
+testing: warning: no tests to run
+BenchmarkTrieMux-4      	    2000	    809379 ns/op	 1095099 B/op	    3177 allocs/op
+BenchmarkHttpRouter-4   	    2000	    670166 ns/op	 1030812 B/op	    2604 allocs/op
+PASS
+ok  	github.com/teambition/trie-mux/bench	3.163s
+```
+
 ## License
-Gear-Auth is licensed under the [MIT](https://github.com/teambition/trie-mux/blob/master/LICENSE) license.
+trie-mux is licensed under the [MIT](https://github.com/teambition/trie-mux/blob/master/LICENSE) license.
 Copyright &copy; 2016 [Teambition](https://www.teambition.com).
