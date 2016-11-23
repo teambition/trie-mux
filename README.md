@@ -1,6 +1,6 @@
 trie-mux
 ====
-A minimal tree based url path router (or mux) for Go.
+A minimal and powerful trie based url path router (or mux) for Go.
 
 [![Build Status](http://img.shields.io/travis/teambition/trie-mux.svg?style=flat-square)](https://travis-ci.org/teambition/trie-mux)
 [![Coverage Status](http://img.shields.io/coveralls/teambition/trie-mux.svg?style=flat-square)](https://coveralls.io/r/teambition/trie-mux)
@@ -167,7 +167,7 @@ https://godoc.org/github.com/teambition/trie-mux
 ## Bench
 
 ```bash
-go test -bench=. ./bench
+go test -bench=. ./mux
 ```
 
 ```

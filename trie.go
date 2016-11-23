@@ -1,4 +1,4 @@
-// Package trie implements a minimal tree based url path router (or mux) for Go.
+// Package trie implements a minimal and powerful trie based url path router (or mux) for Go.
 
 package trie
 

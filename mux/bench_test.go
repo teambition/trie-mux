@@ -1,4 +1,4 @@
-package trie_mux_test
+package mux_test
 
 import (
 	"net/http"
