@@ -338,10 +338,44 @@ func benchRoutes(b *testing.B, router http.Handler, routes []route) {
 	}
 }
 
+func Request(method, url string) (*http.Response, error) {
+	req, err := http.NewRequest(method, url, nil)
+	if err != nil {
+		panic(err)
+	}
+	return http.DefaultClient.Do(req)
+}
+
+func benchRequests(b *testing.B, router http.Handler, routes []route) {
+	ts := httptest.NewServer(router)
+	defer ts.Close()
+
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		for _, route := range routes {
+			res, err := Request(route.method, ts.URL+route.path)
+			if err != nil {
+				panic(err)
+			}
+			res.Body.Close()
+		}
+	}
+}
+
 func BenchmarkTrieMux(b *testing.B) {
 	benchRoutes(b, trieMux, githubAPI)
 }
 
 func BenchmarkHttpRouter(b *testing.B) {
 	benchRoutes(b, httpRouter, githubAPI)
+}
+
+func BenchmarkTrieMuxRequests(b *testing.B) {
+	benchRequests(b, trieMux, githubAPI)
+}
+
+func BenchmarkHttpRouterRequests(b *testing.B) {
+	benchRequests(b, httpRouter, githubAPI)
 }
