@@ -174,9 +174,8 @@ go test -bench=. ./mux
 GithubAPI Routes: 203
    trie-mux: 85408 Bytes
    HttpRouter: 37464 Bytes
-testing: warning: no tests to run
-BenchmarkTrieMux-4      	    2000	    809379 ns/op	 1095099 B/op	    3177 allocs/op
-BenchmarkHttpRouter-4   	    2000	    670166 ns/op	 1030812 B/op	    2604 allocs/op
+BenchmarkTrieMux-4      	    2000	    750339 ns/op	 1089677 B/op	    3177 allocs/op
+BenchmarkHttpRouter-4   	    2000	    693371 ns/op	 1030813 B/op	    2604 allocs/op
 PASS
 ok  	github.com/teambition/trie-mux/bench	3.163s
 ```
