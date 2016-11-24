@@ -240,9 +240,9 @@ func TestGearTrie(t *testing.T) {
 			assert.Nil(res.Params)
 			EqualPtr(t, node, res.Node)
 
-			res2 := tr1.Match("")
-			EqualPtr(t, node, res2.Node)
-			NotEqualPtr(t, res, res2)
+			assert.Panics(func() {
+				tr1.Match("")
+			})
 
 			assert.Nil(tr1.Match("/a").Node)
 		})

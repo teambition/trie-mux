@@ -112,9 +112,8 @@ func (t *Trie) Define(pattern string) *Node {
 func (t *Trie) Match(path string) *Matched {
 	parent := t.root
 	res := &Matched{}
-	// path should start with `/`
 	if path == "" || path[0] != '/' {
-		path = "/" + path
+		panic(fmt.Errorf(`Path is not start with "/": "%s"`, path))
 	}
 	fixedLen := len(path)
 	if t.fpr {
@@ -123,17 +122,17 @@ func (t *Trie) Match(path string) *Matched {
 	}
 
 	i := 0
-	start := 0
+	start := 1
 	end := len(path)
-	buf := path + "/"
+	_path := path + "/"
 	for {
 		if i++; i > end {
 			break
 		}
-		if buf[i] != '/' {
+		if _path[i] != '/' {
 			continue
 		}
-		frag := buf[start+1 : i]
+		frag := _path[start:i]
 		node, named := matchNode(parent, frag)
 		if node == nil && t.ignoreCase {
 			node, named = matchNode(parent, strings.ToLower(frag))
@@ -155,14 +154,14 @@ func (t *Trie) Match(path string) *Matched {
 			if res.Params == nil {
 				res.Params = map[string]string{}
 			}
-			if node.wildcard {
-				res.Params[node.name] = path[start+1 : end]
+			if parent.wildcard {
+				res.Params[parent.name] = path[start:end]
 				break
 			} else {
-				res.Params[node.name] = frag
+				res.Params[parent.name] = frag
 			}
 		}
-		start = i
+		start = i + 1
 	}
 
 	if parent.endpoint {
