@@ -298,7 +298,7 @@ func TestMux(t *testing.T) {
 		assert := assert.New(t)
 
 		mux := New()
-		mux.Get("/api/:type/:ID(^\\d+$)", func(w http.ResponseWriter, _ *http.Request, params Params) {
+		mux.Get(`/api/:type/:ID(^\d+$)`, func(w http.ResponseWriter, _ *http.Request, params Params) {
 			w.WriteHeader(200)
 			w.Write([]byte(params["type"] + params["ID"]))
 		})

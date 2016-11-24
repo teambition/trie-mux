@@ -124,13 +124,13 @@ The defined pattern can contain three types of parameters:
 | `:name` | named parameter |
 | `:name*` | named with catch-all parameter |
 | `:name(regexp)` | named with regexp parameter |
-
+| `::name` | not named parameter, it is literal `:name` |
 
 Named parameters are dynamic path segments. They match anything until the next '/' or the path end:
 
 Defined: `/api/:type/:ID`
 ```
-/api/user/123             match: type="user", ID="123"
+/api/user/123             matched: type="user", ID="123"
 /api/user                 no match
 /api/user/123/comments    no match
 ```
@@ -140,15 +140,15 @@ Named with catch-all parameters match anything until the path end, including the
 Defined: `/files/:filepath*`
 ```
 /files                           no match
-/files/LICENSE                   match: filepath="LICENSE"
-/files/templates/article.html    match: filepath="templates/article.html"
+/files/LICENSE                   matched: filepath="LICENSE"
+/files/templates/article.html    matched: filepath="templates/article.html"
 ```
 
 Named with regexp parameters match anything using regexp until the next '/' or the path end:
 
-Defined: `/api/:type/:ID(^\\d+$)`
+Defined: `/api/:type/:ID(^\d+$)`
 ```
-/api/user/123             match: type="user", ID="123"
+/api/user/123             matched: type="user", ID="123"
 /api/user                 no match
 /api/user/abc             no match
 /api/user/123/comments    no match

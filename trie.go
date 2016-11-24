@@ -88,6 +88,7 @@ type Trie struct {
 // | `:name` | named parameter |
 // | `:name*` | named with catch-all parameter |
 // | `:name(regexp)` | named with regexp parameter |
+// | `::name` | not named parameter, it is literal `:name` |
 //
 func (t *Trie) Define(pattern string) *Node {
 	if strings.Contains(pattern, "//") {
@@ -134,8 +135,8 @@ func (t *Trie) Match(path string) *Matched {
 			}
 			return res
 		}
-		parent = node
 
+		parent = node
 		if named {
 			if res.Params == nil {
 				res.Params = map[string]string{}
