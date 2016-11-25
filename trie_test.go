@@ -49,10 +49,10 @@ func TestGearTrie(t *testing.T) {
 			parent := tr1.Define("/a")
 			EqualPtr(t, node.parentNode, parent)
 			NotEqualPtr(t, parent.varyChild, node)
-			EqualPtr(t, parent.literalChildren["b"], node)
+			EqualPtr(t, parent.getLiteralChild("b"), node)
 			child := tr1.Define("/a/b/c")
 			EqualPtr(t, child.parentNode, node)
-			EqualPtr(t, node.literalChildren["c"], child)
+			EqualPtr(t, node.getLiteralChild("c"), child)
 
 			assert.Panics(func() {
 				tr1.Define("/a//b")
@@ -71,13 +71,13 @@ func TestGearTrie(t *testing.T) {
 			parent := tr1.Define("/a")
 			EqualPtr(t, node.parentNode, parent)
 			NotEqualPtr(t, parent.varyChild, node)
-			EqualPtr(t, parent.literalChildren[":"], tr1.Define("/a/::"))
-			EqualPtr(t, parent.literalChildren[":b"], tr1.Define("/a/::b"))
-			EqualPtr(t, parent.literalChildren[":x"], tr1.Define("/a/::x"))
+			EqualPtr(t, parent.getLiteralChild(":"), tr1.Define("/a/::"))
+			EqualPtr(t, parent.getLiteralChild(":b"), tr1.Define("/a/::b"))
+			EqualPtr(t, parent.getLiteralChild(":x"), tr1.Define("/a/::x"))
 
 			child := tr1.Define("/a/::b/c")
 			EqualPtr(t, child.parentNode, node)
-			EqualPtr(t, node.literalChildren["c"], child)
+			EqualPtr(t, node.getLiteralChild("c"), child)
 		})
 
 		t.Run("named pattern", func(t *testing.T) {
@@ -516,11 +516,11 @@ func TestGearTrie(t *testing.T) {
 			tr.Define("/api").Handle("GET", handler)
 		})
 
-		EqualPtr(t, handler, tr.Match("/").Node.Methods["GET"].(func()))
-		EqualPtr(t, handler, tr.Match("/").Node.Methods["PUT"].(func()))
-		assert.Equal("GET, PUT", tr.Match("/").Node.AllowMethods)
+		EqualPtr(t, handler, tr.Match("/").Node.GetHandler("GET").(func()))
+		EqualPtr(t, handler, tr.Match("/").Node.GetHandler("PUT").(func()))
+		assert.Equal("GET, PUT", tr.Match("/").Node.GetAllow())
 
-		EqualPtr(t, handler, tr.Match("/api").Node.Methods["GET"].(func()))
-		assert.Equal("GET", tr.Match("/api").Node.AllowMethods)
+		EqualPtr(t, handler, tr.Match("/api").Node.GetHandler("GET").(func()))
+		assert.Equal("GET", tr.Match("/api").Node.GetAllow())
 	})
 }

@@ -57,9 +57,9 @@ func New(args ...Options) *Trie {
 		fpr:        opts.FixedPathRedirect,
 		tsr:        opts.TrailingSlashRedirect,
 		root: &Node{
-			parentNode:      nil,
-			literalChildren: map[string]*Node{},
-			Methods:         map[string]interface{}{},
+			parentNode: nil,
+			children:   make([]*literalNode, 0),
+			handlers:   make([]*literalHandler, 0),
 		},
 	}
 }
@@ -110,8 +110,6 @@ func (t *Trie) Define(pattern string) *Node {
 //  matched := trie.Match("/a/b")
 //
 func (t *Trie) Match(path string) *Matched {
-	parent := t.root
-	res := &Matched{}
 	if path == "" || path[0] != '/' {
 		panic(fmt.Errorf(`Path is not start with "/": "%s"`, path))
 	}
@@ -124,6 +122,8 @@ func (t *Trie) Match(path string) *Matched {
 	i := 0
 	start := 1
 	end := len(path)
+	res := new(Matched)
+	parent := t.root
 	_path := path + "/"
 	for {
 		if i++; i > end {
@@ -134,7 +134,7 @@ func (t *Trie) Match(path string) *Matched {
 		}
 		frag := _path[start:i]
 		node, named := matchNode(parent, frag)
-		if node == nil && t.ignoreCase {
+		if t.ignoreCase && node == nil {
 			node, named = matchNode(parent, strings.ToLower(frag))
 		}
 		if node == nil {
@@ -152,7 +152,7 @@ func (t *Trie) Match(path string) *Matched {
 		parent = node
 		if named {
 			if res.Params == nil {
-				res.Params = map[string]string{}
+				res.Params = make(map[string]string)
 			}
 			if parent.wildcard {
 				res.Params[parent.name] = path[start:end]
@@ -170,7 +170,7 @@ func (t *Trie) Match(path string) *Matched {
 			res.FPR = path
 			res.Node = nil
 		}
-	} else if t.tsr && parent.literalChildren[""] != nil {
+	} else if t.tsr && parent.getLiteralChild("") != nil {
 		// TrailingSlashRedirect: /acb/efg -> /acb/efg/
 		res.TSR = path + "/"
 		if t.fpr && fixedLen > 0 {
@@ -179,58 +179,6 @@ func (t *Trie) Match(path string) *Matched {
 		}
 	}
 	return res
-}
-
-// Node represents a node on defined patterns that can be matched.
-type Node struct {
-	// Methods defined on the node
-	//
-	//  trie := New()
-	//  trie.Define("/").Handle("GET", handler1)
-	//  trie.Define("/").Handle("PUT", handler2)
-	//
-	//  trie.Match("/").Node.AllowMethods == "GET, PUT"
-	//
-	AllowMethods string
-
-	// Method & Handler map defined on the node
-	//
-	//  trie := New()
-	//  trie.Define("/api").Handle("GET", func handler1() {})
-	//  trie.Define("/api").Handle("PUT", func handler2() {})
-	//
-	//  trie.Match("/api").Node.Methods["GET"].(func()) == handler1
-	//  trie.Match("/api").Node.Methods["PUT"].(func()) == handler2
-	//
-	Methods map[string]interface{}
-
-	pattern         string
-	name            string
-	endpoint        bool
-	wildcard        bool
-	regex           *regexp.Regexp
-	parentNode      *Node
-	varyChild       *Node
-	literalChildren map[string]*Node
-}
-
-// Handle is used to mount a handler with a method name to the node.
-//
-//  t := New()
-//  node := t.Define("/a/b")
-//  node.Handle("GET", handler1)
-//  node.Handle("POST", handler1)
-//
-func (n *Node) Handle(method string, handler interface{}) {
-	if n.Methods[method] != nil {
-		panic(fmt.Errorf(`"%s" already defined`, n.pattern))
-	}
-	n.Methods[method] = handler
-	if n.AllowMethods == "" {
-		n.AllowMethods = method
-	} else {
-		n.AllowMethods += ", " + method
-	}
 }
 
 // Matched is a result returned by Trie.Match.
@@ -250,6 +198,87 @@ type Matched struct {
 	TSR string
 }
 
+// Node represents a node on defined patterns that can be matched.
+type Node struct {
+	name, allow, pattern  string
+	endpoint, wildcard    bool
+	parentNode, varyChild *Node
+	children              []*literalNode
+	handlers              []*literalHandler
+	regex                 *regexp.Regexp
+}
+
+type literalHandler struct {
+	key string
+	val interface{}
+}
+
+type literalNode struct {
+	key string
+	val *Node
+}
+
+func (n *Node) getLiteralChild(key string) (node *Node) {
+	for _, v := range n.children {
+		if key == v.key {
+			node = v.val
+			return
+		}
+	}
+	return
+}
+
+// Handle is used to mount a handler with a method name to the node.
+//
+//  t := New()
+//  node := t.Define("/a/b")
+//  node.Handle("GET", handler1)
+//  node.Handle("POST", handler1)
+//
+func (n *Node) Handle(method string, handler interface{}) {
+	if n.GetHandler(method) != nil {
+		panic(fmt.Errorf(`"%s" already defined`, n.pattern))
+	}
+	n.handlers = append(n.handlers, &literalHandler{method, handler})
+	if n.allow == "" {
+		n.allow = method
+	} else {
+		n.allow += ", " + method
+	}
+}
+
+// GetHandler ...
+// GetHandler returns handler by method that defined on the node
+//
+//  trie := New()
+//  trie.Define("/api").Handle("GET", func handler1() {})
+//  trie.Define("/api").Handle("PUT", func handler2() {})
+//
+//  trie.Match("/api").Node.GetHandler("GET").(func()) == handler1
+//  trie.Match("/api").Node.GetHandler("PUT").(func()) == handler2
+//
+func (n *Node) GetHandler(method string) (handler interface{}) {
+	for _, v := range n.handlers {
+		if method == v.key {
+			handler = v.val
+			return
+		}
+	}
+	return
+}
+
+// GetAllow returns allow methods defined on the node
+//
+//  trie := New()
+//  trie.Define("/").Handle("GET", handler1)
+//  trie.Define("/").Handle("PUT", handler2)
+//
+//  // trie.Match("/").Node.GetAllow() == "GET, PUT"
+//
+func (n *Node) GetAllow() string {
+	return n.allow
+}
+
 func defineNode(parent *Node, frags []string, ignoreCase bool) *Node {
 	frag := frags[0]
 	frags = frags[1:]
@@ -265,7 +294,7 @@ func defineNode(parent *Node, frags []string, ignoreCase bool) *Node {
 }
 
 func matchNode(parent *Node, frag string) (child *Node, named bool) {
-	if child = parent.literalChildren[frag]; child != nil {
+	if child = parent.getLiteralChild(frag); child != nil {
 		return
 	}
 
@@ -280,8 +309,6 @@ func matchNode(parent *Node, frag string) (child *Node, named bool) {
 }
 
 func parseNode(parent *Node, frag string, ignoreCase bool) *Node {
-	literalChildren := parent.literalChildren
-
 	_frag := frag
 	if doubleColonReg.MatchString(frag) {
 		_frag = frag[1:]
@@ -290,23 +317,24 @@ func parseNode(parent *Node, frag string, ignoreCase bool) *Node {
 		_frag = strings.ToLower(_frag)
 	}
 
-	if literalChildren[_frag] != nil {
-		return literalChildren[_frag]
+	if node := parent.getLiteralChild(_frag); node != nil {
+		return node
 	}
 
 	node := &Node{
-		parentNode:      parent,
-		literalChildren: map[string]*Node{},
-		Methods:         map[string]interface{}{},
+		parentNode: parent,
+		children:   make([]*literalNode, 0),
+		handlers:   make([]*literalHandler, 0),
 	}
 
 	if frag == "" {
-		literalChildren[frag] = node
+		parent.children = append(parent.children, &literalNode{frag, node})
+
 	} else if doubleColonReg.MatchString(frag) {
 		// pattern "/a/::" should match "/a/:"
 		// pattern "/a/::bc" should match "/a/:bc"
 		// pattern "/a/::/bc" should match "/a/:/bc"
-		literalChildren[_frag] = node
+		parent.children = append(parent.children, &literalNode{_frag, node})
 	} else if frag[0] == ':' {
 		var name, regex string
 		name = frag[1:]
@@ -344,7 +372,7 @@ func parseNode(parent *Node, frag string, ignoreCase bool) *Node {
 	} else if frag[0] == '*' || frag[0] == '(' || frag[0] == ')' {
 		panic(fmt.Errorf(`Invalid pattern: "%s"`, frag))
 	} else {
-		literalChildren[_frag] = node
+		parent.children = append(parent.children, &literalNode{_frag, node})
 	}
 
 	return node

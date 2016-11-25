@@ -126,17 +126,17 @@ func (m *Mux) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		handler = m.otherwise
 	} else {
 		ok := false
-		if handler, ok = res.Node.Methods[method].(HandlerFunc); !ok {
+		if handler, ok = res.Node.GetHandler(method).(HandlerFunc); !ok {
 			// OPTIONS support
 			if method == http.MethodOptions {
-				w.Header().Set("Allow", res.Node.AllowMethods)
+				w.Header().Set("Allow", res.Node.GetAllow())
 				w.WriteHeader(204)
 				return
 			}
 
 			if m.otherwise == nil {
 				// If no route handler is returned, it's a 405 error
-				w.Header().Set("Allow", res.Node.AllowMethods)
+				w.Header().Set("Allow", res.Node.GetAllow())
 				http.Error(w, fmt.Sprintf(`"%s" not allowed in "%s"`, method, path), 405)
 				return
 			}
