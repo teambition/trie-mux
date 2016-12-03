@@ -31,8 +31,8 @@ type Options struct {
 }
 
 var (
-	wordReg        = regexp.MustCompile("^\\w+$")
-	doubleColonReg = regexp.MustCompile("^::\\w*$")
+	wordReg        = regexp.MustCompile(`^\w+$`)
+	doubleColonReg = regexp.MustCompile(`^::\w*$`)
 	defaultOptions = Options{
 		IgnoreCase:            true,
 		TrailingSlashRedirect: true,
