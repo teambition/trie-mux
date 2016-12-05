@@ -133,9 +133,9 @@ func (t *Trie) Match(path string) *Matched {
 			continue
 		}
 		frag := _path[start:i]
-		node, named := matchNode(parent, frag)
+		node := matchNode(parent, frag)
 		if t.ignoreCase && node == nil {
-			node, named = matchNode(parent, strings.ToLower(frag))
+			node = matchNode(parent, strings.ToLower(frag))
 		}
 		if node == nil {
 			// TrailingSlashRedirect: /acb/efg/ -> /acb/efg
@@ -150,7 +150,7 @@ func (t *Trie) Match(path string) *Matched {
 		}
 
 		parent = node
-		if named {
+		if parent.name != "" {
 			if res.Params == nil {
 				res.Params = make(map[string]string)
 			}
@@ -287,22 +287,18 @@ func defineNode(parent *Node, frags []string, ignoreCase bool) *Node {
 	if len(frags) == 0 {
 		child.endpoint = true
 		return child
-	} else if child.wildcard {
+	}
+	if child.wildcard {
 		panic(fmt.Errorf(`Can't define pattern after wildcard: "%s"`, child.pattern))
 	}
 	return defineNode(child, frags, ignoreCase)
 }
 
-func matchNode(parent *Node, frag string) (child *Node, named bool) {
-	if child = parent.getLiteralChild(frag); child != nil {
-		return
-	}
-
-	if child = parent.varyChild; child != nil {
-		if child.regex != nil && !child.regex.MatchString(frag) {
+func matchNode(parent *Node, frag string) (child *Node) {
+	if child = parent.getLiteralChild(frag); child == nil {
+		child = parent.varyChild
+		if child != nil && child.regex != nil && !child.regex.MatchString(frag) {
 			child = nil
-		} else {
-			named = true
 		}
 	}
 	return
@@ -329,7 +325,6 @@ func parseNode(parent *Node, frag string, ignoreCase bool) *Node {
 
 	if frag == "" {
 		parent.children = append(parent.children, &literalNode{frag, node})
-
 	} else if doubleColonReg.MatchString(frag) {
 		// pattern "/a/::" should match "/a/:"
 		// pattern "/a/::bc" should match "/a/:bc"
