@@ -57,9 +57,9 @@ func New(args ...Options) *Trie {
 		fpr:        opts.FixedPathRedirect,
 		tsr:        opts.TrailingSlashRedirect,
 		root: &Node{
-			parentNode: nil,
-			children:   make([]*literalNode, 0),
-			handlers:   make([]*literalHandler, 0),
+			parent:   nil,
+			children: make([]*literalNode, 0),
+			handlers: make([]*literalHandler, 0),
 		},
 	}
 }
@@ -78,7 +78,7 @@ type Trie struct {
 //  node1 := trie.Define("/a")
 //  node2 := trie.Define("/a/b")
 //  node3 := trie.Define("/a/b")
-//  // node2.parentNode == node1
+//  // node2.parent == node1
 //  // node2 == node3
 //
 // The defined pattern can contain three types of parameters:
@@ -200,12 +200,12 @@ type Matched struct {
 
 // Node represents a node on defined patterns that can be matched.
 type Node struct {
-	name, allow, pattern  string
-	endpoint, wildcard    bool
-	parentNode, varyChild *Node
-	children              []*literalNode
-	handlers              []*literalHandler
-	regex                 *regexp.Regexp
+	name, allow, pattern string
+	endpoint, wildcard   bool
+	parent, varyChild    *Node
+	children             []*literalNode
+	handlers             []*literalHandler
+	regex                *regexp.Regexp
 }
 
 type literalHandler struct {
@@ -318,9 +318,9 @@ func parseNode(parent *Node, frag string, ignoreCase bool) *Node {
 	}
 
 	node := &Node{
-		parentNode: parent,
-		children:   make([]*literalNode, 0),
-		handlers:   make([]*literalHandler, 0),
+		parent:   parent,
+		children: make([]*literalNode, 0),
+		handlers: make([]*literalHandler, 0),
 	}
 
 	if frag == "" {
@@ -357,7 +357,7 @@ func parseNode(parent *Node, frag string, ignoreCase bool) *Node {
 			if child.name != name || child.wildcard != node.wildcard {
 				panic(fmt.Errorf(`Invalid pattern: "%s"`, frag))
 			}
-			if child.regex != nil && child.regex.String() != regex {
+			if child.regex != nil && child.regex.String() != node.regex.String() {
 				panic(fmt.Errorf(`Invalid pattern: "%s"`, frag))
 			}
 			return child

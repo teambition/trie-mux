@@ -30,7 +30,7 @@ func TestGearTrie(t *testing.T) {
 			NotEqualPtr(t, node, tr2.Define("/"))
 			NotEqualPtr(t, node, tr2.Define(""))
 
-			EqualPtr(t, node.parentNode, tr1.root)
+			EqualPtr(t, node.parent, tr1.root)
 		})
 
 		t.Run("simple pattern", func(t *testing.T) {
@@ -47,11 +47,11 @@ func TestGearTrie(t *testing.T) {
 			assert.Equal(node.pattern, "/a/b")
 
 			parent := tr1.Define("/a")
-			EqualPtr(t, node.parentNode, parent)
+			EqualPtr(t, node.parent, parent)
 			NotEqualPtr(t, parent.varyChild, node)
 			EqualPtr(t, parent.getLiteralChild("b"), node)
 			child := tr1.Define("/a/b/c")
-			EqualPtr(t, child.parentNode, node)
+			EqualPtr(t, child.parent, node)
 			EqualPtr(t, node.getLiteralChild("c"), child)
 
 			assert.Panics(func() {
@@ -69,14 +69,14 @@ func TestGearTrie(t *testing.T) {
 			NotEqualPtr(t, node, tr1.Define("/a/::x"))
 
 			parent := tr1.Define("/a")
-			EqualPtr(t, node.parentNode, parent)
+			EqualPtr(t, node.parent, parent)
 			NotEqualPtr(t, parent.varyChild, node)
 			EqualPtr(t, parent.getLiteralChild(":"), tr1.Define("/a/::"))
 			EqualPtr(t, parent.getLiteralChild(":b"), tr1.Define("/a/::b"))
 			EqualPtr(t, parent.getLiteralChild(":x"), tr1.Define("/a/::x"))
 
 			child := tr1.Define("/a/::b/c")
-			EqualPtr(t, child.parentNode, node)
+			EqualPtr(t, child.parent, node)
 			EqualPtr(t, node.getLiteralChild("c"), child)
 		})
 
@@ -106,9 +106,9 @@ func TestGearTrie(t *testing.T) {
 			parent := tr1.Define("/a")
 			assert.Equal(parent.name, "")
 			EqualPtr(t, parent.varyChild, node)
-			EqualPtr(t, node.parentNode, parent)
+			EqualPtr(t, node.parent, parent)
 			child := tr1.Define("/a/:b/c")
-			EqualPtr(t, child.parentNode, node)
+			EqualPtr(t, child.parent, node)
 			assert.Panics(func() {
 				tr1.Define("/a/:x/c")
 			})
@@ -144,10 +144,13 @@ func TestGearTrie(t *testing.T) {
 			assert.Equal(parent.name, "")
 			assert.False(parent.wildcard)
 			EqualPtr(t, parent.varyChild, node)
-			EqualPtr(t, node.parentNode, parent)
+			EqualPtr(t, node.parent, parent)
 			assert.Panics(func() {
 				tr1.Define("/a/:b*/c")
 			})
+			tr1.Define("/a/bc")
+			tr1.Define("/a/b/c")
+			EqualPtr(t, node, tr1.Define("/a/:b*"))
 		})
 
 		t.Run("regexp pattern", func(t *testing.T) {
@@ -202,10 +205,10 @@ func TestGearTrie(t *testing.T) {
 			assert.Equal(parent.name, "")
 			assert.False(parent.wildcard)
 			EqualPtr(t, parent.varyChild, node)
-			EqualPtr(t, node.parentNode, parent)
+			EqualPtr(t, node.parent, parent)
 
 			child := tr1.Define("/a/:b(x|y|z)/c")
-			EqualPtr(t, child.parentNode, node)
+			EqualPtr(t, child.parent, node)
 			assert.Panics(func() {
 				tr1.Define("/a/:x(x|y|z)/c")
 			})
