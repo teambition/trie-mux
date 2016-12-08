@@ -31,9 +31,10 @@ type Options struct {
 }
 
 var (
-	wordReg        = regexp.MustCompile(`^\w+$`)
-	doubleColonReg = regexp.MustCompile(`^::\w*$`)
-	defaultOptions = Options{
+	wordReg          = regexp.MustCompile(`^\w+$`)
+	doubleColonReg   = regexp.MustCompile(`^::\w*$`)
+	fixMultiSlashReg = regexp.MustCompile(`(?i)/{2,}`)
+	defaultOptions   = Options{
 		IgnoreCase:            true,
 		TrailingSlashRedirect: true,
 		FixedPathRedirect:     true,
@@ -377,5 +378,5 @@ func fixPath(path string) string {
 	if !strings.Contains(path, "//") {
 		return path
 	}
-	return fixPath(strings.Replace(path, "//", "/", -1))
+	return fixMultiSlashReg.ReplaceAllString(path, "/")
 }
