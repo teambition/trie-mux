@@ -33,7 +33,7 @@ type Options struct {
 var (
 	wordReg          = regexp.MustCompile(`^\w+$`)
 	doubleColonReg   = regexp.MustCompile(`^::\w*$`)
-	fixMultiSlashReg = regexp.MustCompile(`(?i)/{2,}`)
+	fixMultiSlashReg = regexp.MustCompile(`/{2,}`)
 	defaultOptions   = Options{
 		IgnoreCase:            true,
 		TrailingSlashRedirect: true,
@@ -59,8 +59,8 @@ func New(args ...Options) *Trie {
 		tsr:        opts.TrailingSlashRedirect,
 		root: &Node{
 			parent:   nil,
-			children: make([]*literalNode, 0),
-			handlers: make([]*literalHandler, 0),
+			children: make([]*nodePack, 0),
+			handlers: make([]*handlerPack, 0),
 		},
 	}
 }
@@ -120,20 +120,15 @@ func (t *Trie) Match(path string) *Matched {
 		fixedLen -= len(path)
 	}
 
-	i := 0
 	start := 1
 	end := len(path)
 	res := new(Matched)
 	parent := t.root
-	_path := path + "/"
-	for {
-		if i++; i > end {
-			break
-		}
-		if _path[i] != '/' {
+	for i := 1; i <= end; i++ {
+		if i < end && path[i] != '/' {
 			continue
 		}
-		frag := _path[start:i]
+		frag := path[start:i]
 		node := matchNode(parent, frag)
 		if t.ignoreCase && node == nil {
 			node = matchNode(parent, strings.ToLower(frag))
@@ -171,7 +166,7 @@ func (t *Trie) Match(path string) *Matched {
 			res.FPR = path
 			res.Node = nil
 		}
-	} else if t.tsr && parent.getLiteralChild("") != nil {
+	} else if t.tsr && parent.getChild("") != nil {
 		// TrailingSlashRedirect: /acb/efg -> /acb/efg/
 		res.TSR = path + "/"
 		if t.fpr && fixedLen > 0 {
@@ -204,29 +199,28 @@ type Node struct {
 	name, allow, pattern string
 	endpoint, wildcard   bool
 	parent, varyChild    *Node
-	children             []*literalNode
-	handlers             []*literalHandler
+	children             []*nodePack
+	handlers             []*handlerPack
 	regex                *regexp.Regexp
 }
 
-type literalHandler struct {
+type handlerPack struct {
 	key string
 	val interface{}
 }
 
-type literalNode struct {
+type nodePack struct {
 	key string
 	val *Node
 }
 
-func (n *Node) getLiteralChild(key string) (node *Node) {
+func (n *Node) getChild(key string) *Node {
 	for _, v := range n.children {
 		if key == v.key {
-			node = v.val
-			return
+			return v.val
 		}
 	}
-	return
+	return nil
 }
 
 // Handle is used to mount a handler with a method name to the node.
@@ -240,7 +234,7 @@ func (n *Node) Handle(method string, handler interface{}) {
 	if n.GetHandler(method) != nil {
 		panic(fmt.Errorf(`"%s" already defined`, n.pattern))
 	}
-	n.handlers = append(n.handlers, &literalHandler{method, handler})
+	n.handlers = append(n.handlers, &handlerPack{method, handler})
 	if n.allow == "" {
 		n.allow = method
 	} else {
@@ -258,14 +252,13 @@ func (n *Node) Handle(method string, handler interface{}) {
 //  trie.Match("/api").Node.GetHandler("GET").(func()) == handler1
 //  trie.Match("/api").Node.GetHandler("PUT").(func()) == handler2
 //
-func (n *Node) GetHandler(method string) (handler interface{}) {
+func (n *Node) GetHandler(method string) interface{} {
 	for _, v := range n.handlers {
 		if method == v.key {
-			handler = v.val
-			return
+			return v.val
 		}
 	}
-	return
+	return nil
 }
 
 // GetAllow returns allow methods defined on the node
@@ -296,7 +289,7 @@ func defineNode(parent *Node, frags []string, ignoreCase bool) *Node {
 }
 
 func matchNode(parent *Node, frag string) (child *Node) {
-	if child = parent.getLiteralChild(frag); child == nil {
+	if child = parent.getChild(frag); child == nil {
 		child = parent.varyChild
 		if child != nil && child.regex != nil && !child.regex.MatchString(frag) {
 			child = nil
@@ -314,23 +307,23 @@ func parseNode(parent *Node, frag string, ignoreCase bool) *Node {
 		_frag = strings.ToLower(_frag)
 	}
 
-	if node := parent.getLiteralChild(_frag); node != nil {
+	if node := parent.getChild(_frag); node != nil {
 		return node
 	}
 
 	node := &Node{
 		parent:   parent,
-		children: make([]*literalNode, 0),
-		handlers: make([]*literalHandler, 0),
+		children: make([]*nodePack, 0),
+		handlers: make([]*handlerPack, 0),
 	}
 
 	if frag == "" {
-		parent.children = append(parent.children, &literalNode{frag, node})
+		parent.children = append(parent.children, &nodePack{frag, node})
 	} else if doubleColonReg.MatchString(frag) {
 		// pattern "/a/::" should match "/a/:"
 		// pattern "/a/::bc" should match "/a/:bc"
 		// pattern "/a/::/bc" should match "/a/:/bc"
-		parent.children = append(parent.children, &literalNode{_frag, node})
+		parent.children = append(parent.children, &nodePack{_frag, node})
 	} else if frag[0] == ':' {
 		var name, regex string
 		name = frag[1:]
@@ -368,7 +361,7 @@ func parseNode(parent *Node, frag string, ignoreCase bool) *Node {
 	} else if frag[0] == '*' || frag[0] == '(' || frag[0] == ')' {
 		panic(fmt.Errorf(`Invalid pattern: "%s"`, frag))
 	} else {
-		parent.children = append(parent.children, &literalNode{_frag, node})
+		parent.children = append(parent.children, &nodePack{_frag, node})
 	}
 
 	return node

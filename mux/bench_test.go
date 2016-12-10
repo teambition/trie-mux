@@ -374,10 +374,10 @@ func BenchmarkHttpRouter(b *testing.B) {
 	benchRoutes(b, httpRouter, githubAPI)
 }
 
-func BenchmarkTrieMuxRequests(b *testing.B) {
-	benchRequests(b, trieMux, githubAPI)
-}
+// func BenchmarkTrieMuxRequests(b *testing.B) {
+// 	benchRequests(b, trieMux, githubAPI)
+// }
 
-func BenchmarkHttpRouterRequests(b *testing.B) {
-	benchRequests(b, httpRouter, githubAPI)
-}
+// func BenchmarkHttpRouterRequests(b *testing.B) {
+// 	benchRequests(b, httpRouter, githubAPI)
+// }
