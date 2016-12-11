@@ -6,6 +6,7 @@ import (
 	"runtime"
 	"testing"
 
+	"github.com/dimfeld/httptreemux"
 	"github.com/julienschmidt/httprouter"
 	"github.com/teambition/trie-mux/mux"
 )
@@ -282,6 +283,7 @@ var githubAPI = []route{
 var (
 	trieMux    http.Handler
 	httpRouter http.Handler
+	treeMux    http.Handler
 )
 
 func calcMem(name string, load func()) {
@@ -325,6 +327,17 @@ func init() {
 		}
 		httpRouter = router
 	})
+
+	calcMem("httptreemux", func() {
+		router := httptreemux.New()
+		handler := func(w http.ResponseWriter, _ *http.Request, _ map[string]string) {
+			w.WriteHeader(204)
+		}
+		for _, route := range githubAPI {
+			router.Handle(route.method, route.path, handler)
+		}
+		treeMux = router
+	})
 }
 
 func benchRoutes(b *testing.B, router http.Handler, routes []route) {
@@ -351,7 +364,7 @@ func benchRequests(b *testing.B, router http.Handler, routes []route) {
 	ts := httptest.NewServer(router)
 	defer ts.Close()
 
-	b.N = 2000
+	b.N = 1000
 	b.ReportAllocs()
 	b.ResetTimer()
 
@@ -374,10 +387,18 @@ func BenchmarkHttpRouter(b *testing.B) {
 	benchRoutes(b, httpRouter, githubAPI)
 }
 
-// func BenchmarkTrieMuxRequests(b *testing.B) {
-// 	benchRequests(b, trieMux, githubAPI)
-// }
+func BenchmarkHttpTreeMux(b *testing.B) {
+	benchRoutes(b, treeMux, githubAPI)
+}
 
-// func BenchmarkHttpRouterRequests(b *testing.B) {
-// 	benchRequests(b, httpRouter, githubAPI)
-// }
+func BenchmarkTrieMuxRequests(b *testing.B) {
+	benchRequests(b, trieMux, githubAPI)
+}
+
+func BenchmarkHttpRouterRequests(b *testing.B) {
+	benchRequests(b, httpRouter, githubAPI)
+}
+
+func BenchmarkHttpTreeMuxRequests(b *testing.B) {
+	benchRequests(b, treeMux, githubAPI)
+}

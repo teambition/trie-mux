@@ -174,12 +174,15 @@ go test -bench=. ./mux
 GithubAPI Routes: 203
    trie-mux: 37464 Bytes
    HttpRouter: 37464 Bytes
-BenchmarkTrieMux-4              	   20000	    732602 ns/op	 1089676 B/op	    3177 allocs/op
-BenchmarkHttpRouter-4           	   20000	    655435 ns/op	 1030812 B/op	    2604 allocs/op
-BenchmarkTrieMuxRequests-4      	    2000	  15687528 ns/op	  823011 B/op	   10690 allocs/op
-BenchmarkHttpRouterRequests-4   	    2000	  15368006 ns/op	  763972 B/op	   10116 allocs/op
+   httptreemux: 78768 Bytes
+BenchmarkTrieMux-4               	   20000	    758711 ns/op	 1082902 B/op	    2974 allocs/op
+BenchmarkHttpRouter-4            	   20000	    687400 ns/op	 1030826 B/op	    2604 allocs/op
+BenchmarkHttpTreeMux-4           	   20000	    786506 ns/op	 1082902 B/op	    3108 allocs/op
+BenchmarkTrieMuxRequests-4       	    1000	  17564036 ns/op	  816398 B/op	   10488 allocs/op
+BenchmarkHttpRouterRequests-4    	    1000	  17050872 ns/op	  764200 B/op	   10117 allocs/op
+BenchmarkHttpTreeMuxRequests-4   	    1000	  17125625 ns/op	  816408 B/op	   10622 allocs/op
 PASS
-ok  	github.com/teambition/trie-mux/mux	89.899s
+ok  	github.com/teambition/trie-mux/mux	96.427s
 ```
 
 ## License
