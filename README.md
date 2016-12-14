@@ -13,58 +13,15 @@ https://github.com/zensh/route-trie
 
 ## Features:
 
-1. Support regexp (Trie)
-2. Fixed path automatic redirection (Trie)
-3. Trailing slash automatic redirection (Trie)
-4. Automatic handle `405 Method Not Allowed` (Mux)
-5. Automatic handle `501 Not Implemented` (Mux)
-6. Automatic handle `OPTIONS` method (Mux)
+1. Support regexp (package trie)
+2. Fixed path automatic redirection (package trie)
+3. Trailing slash automatic redirection (package trie)
+4. Automatic handle `405 Method Not Allowed` (package mux)
+5. Automatic handle `501 Not Implemented` (package mux)
+6. Automatic handle `OPTIONS` method (package mux)
 7. Best Performance
 
 ## Implementations
-
-### Gear: gear.Router
-
-https://github.com/teambition/gear/blob/master/router.go
-
-```go
-package main
-
-import (
-	"fmt"
-	"io/ioutil"
-	"net/http"
-
-	"github.com/teambition/gear"
-)
-
-func main() {
-	app := gear.New()
-
-	router := gear.NewRouter()
-	router.Get("/", func(ctx *gear.Context) error {
-		return ctx.HTML(200, "<h1>Hello, Gear!</h1>")
-	})
-	router.Get("/view/:view", func(ctx *gear.Context) error {
-		view := ctx.Param("view")
-		if view == "" {
-			return &gear.Error{Code: 400, Msg: "Invalid view"}
-		}
-		return ctx.HTML(200, "View: "+view)
-	})
-
-	app.UseHandler(router)
-	srv := app.Start(":3000")
-	defer srv.Close()
-
-	res, _ := http.Get("http://" + srv.Addr().String() + "/view/users")
-	body, _ := ioutil.ReadAll(res.Body)
-	res.Body.Close()
-
-	fmt.Println(res.StatusCode, string(body))
-	// Output: 200 View: users
-}
-```
 
 ### trie-mux: mux.Mux
 
@@ -107,6 +64,49 @@ func main() {
 	defer srv.Close()
 
 	res, _ := http.Get(srv.URL + "/view/users")
+	body, _ := ioutil.ReadAll(res.Body)
+	res.Body.Close()
+
+	fmt.Println(res.StatusCode, string(body))
+	// Output: 200 View: users
+}
+```
+
+### Gear: gear.Router
+
+https://github.com/teambition/gear/blob/master/router.go
+
+```go
+package main
+
+import (
+	"fmt"
+	"io/ioutil"
+	"net/http"
+
+	"github.com/teambition/gear"
+)
+
+func main() {
+	app := gear.New()
+
+	router := gear.NewRouter()
+	router.Get("/", func(ctx *gear.Context) error {
+		return ctx.HTML(200, "<h1>Hello, Gear!</h1>")
+	})
+	router.Get("/view/:view", func(ctx *gear.Context) error {
+		view := ctx.Param("view")
+		if view == "" {
+			return &gear.Error{Code: 400, Msg: "Invalid view"}
+		}
+		return ctx.HTML(200, "View: "+view)
+	})
+
+	app.UseHandler(router)
+	srv := app.Start(":3000")
+	defer srv.Close()
+
+	res, _ := http.Get("http://" + srv.Addr().String() + "/view/users")
 	body, _ := ioutil.ReadAll(res.Body)
 	res.Body.Close()
 

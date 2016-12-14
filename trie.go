@@ -31,10 +31,10 @@ type Options struct {
 }
 
 var (
-	wordReg          = regexp.MustCompile(`^\w+$`)
-	doubleColonReg   = regexp.MustCompile(`^::\w*$`)
-	fixMultiSlashReg = regexp.MustCompile(`/{2,}`)
-	defaultOptions   = Options{
+	wordReg        = regexp.MustCompile(`^\w+$`)
+	doubleColonReg = regexp.MustCompile(`^::\w*$`)
+	multiSlashReg  = regexp.MustCompile(`/{2,}`)
+	defaultOptions = Options{
 		IgnoreCase:            true,
 		TrailingSlashRedirect: true,
 		FixedPathRedirect:     true,
@@ -122,7 +122,7 @@ func (t *Trie) Match(path string) *Matched {
 
 	start := 1
 	end := len(path)
-	res := new(Matched)
+	matched := new(Matched)
 	parent := t.root
 	for i := 1; i <= end; i++ {
 		if i < end && path[i] != '/' {
@@ -135,46 +135,46 @@ func (t *Trie) Match(path string) *Matched {
 		}
 		if node == nil {
 			// TrailingSlashRedirect: /acb/efg/ -> /acb/efg
-			if t.tsr && frag == "" && i == end && parent.endpoint {
-				res.TSR = path[:end-1]
+			if t.tsr && parent.endpoint && i == end && frag == "" {
+				matched.TSR = path[:end-1]
 				if t.fpr && fixedLen > 0 {
-					res.FPR = res.TSR
-					res.TSR = ""
+					matched.FPR = matched.TSR
+					matched.TSR = ""
 				}
 			}
-			return res
+			return matched
 		}
 
 		parent = node
 		if parent.name != "" {
-			if res.Params == nil {
-				res.Params = make(map[string]string)
+			if matched.Params == nil {
+				matched.Params = make(map[string]string)
 			}
 			if parent.wildcard {
-				res.Params[parent.name] = path[start:end]
+				matched.Params[parent.name] = path[start:end]
 				break
 			} else {
-				res.Params[parent.name] = frag
+				matched.Params[parent.name] = frag
 			}
 		}
 		start = i + 1
 	}
 
 	if parent.endpoint {
-		res.Node = parent
+		matched.Node = parent
 		if t.fpr && fixedLen > 0 {
-			res.FPR = path
-			res.Node = nil
+			matched.FPR = path
+			matched.Node = nil
 		}
 	} else if t.tsr && parent.getChild("") != nil {
 		// TrailingSlashRedirect: /acb/efg -> /acb/efg/
-		res.TSR = path + "/"
+		matched.TSR = path + "/"
 		if t.fpr && fixedLen > 0 {
-			res.FPR = res.TSR
-			res.TSR = ""
+			matched.FPR = matched.TSR
+			matched.TSR = ""
 		}
 	}
-	return res
+	return matched
 }
 
 // Matched is a result returned by Trie.Match.
@@ -371,5 +371,5 @@ func fixPath(path string) string {
 	if !strings.Contains(path, "//") {
 		return path
 	}
-	return fixMultiSlashReg.ReplaceAllString(path, "/")
+	return multiSlashReg.ReplaceAllString(path, "/")
 }
