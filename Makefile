@@ -1,6 +1,9 @@
 test:
-	go test
-	go test ./mux
+	go test --race
+	go test --race ./mux
+
+bench:
+	go test -bench=. ./mux
 
 cover:
 	rm -f *.coverprofile
