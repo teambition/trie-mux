@@ -1,5 +1,5 @@
-trie-mux
-====
+# trie-mux
+
 A minimal and powerful trie based url path router (or mux) for Go.
 
 [![Build Status](http://img.shields.io/travis/teambition/trie-mux.svg?style=flat-square)](https://travis-ci.org/teambition/trie-mux)
@@ -11,15 +11,15 @@ A minimal and powerful trie based url path router (or mux) for Go.
 
 https://github.com/zensh/route-trie
 
-## Features:
+## Features
 
 1. Support regexp (package trie)
-2. Fixed path automatic redirection (package trie)
-3. Trailing slash automatic redirection (package trie)
-4. Automatic handle `405 Method Not Allowed` (package mux)
-5. Automatic handle `501 Not Implemented` (package mux)
-6. Automatic handle `OPTIONS` method (package mux)
-7. Best Performance
+1. Fixed path automatic redirection (package trie)
+1. Trailing slash automatic redirection (package trie)
+1. Automatic handle `405 Method Not Allowed` (package mux)
+1. Automatic handle `501 Not Implemented` (package mux)
+1. Automatic handle `OPTIONS` method (package mux)
+1. Best Performance
 
 ## Implementations
 
@@ -186,5 +186,6 @@ ok  	github.com/teambition/trie-mux/mux	96.427s
 ```
 
 ## License
+
 trie-mux is licensed under the [MIT](https://github.com/teambition/trie-mux/blob/master/LICENSE) license.
-Copyright &copy; 2016 [Teambition](https://www.teambition.com).
+Copyright &copy; 2016-2017 [Teambition](https://www.teambition.com).

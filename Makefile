@@ -11,5 +11,6 @@ cover:
 	go test -coverprofile=mux.coverprofile ./mux
 	gover
 	go tool cover -html=gover.coverprofile
+	rm -f *.coverprofile
 
 .PHONY: test cover

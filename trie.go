@@ -1,5 +1,4 @@
 // Package trie implements a minimal and powerful trie based url path router (or mux) for Go.
-
 package trie
 
 import (
@@ -93,7 +92,7 @@ type Trie struct {
 //
 func (t *Trie) Define(pattern string) *Node {
 	if strings.Contains(pattern, "//") {
-		panic(fmt.Errorf(`Multi-slash exist: "%s"`, pattern))
+		panic(fmt.Errorf(`multi-slash exist: "%s"`, pattern))
 	}
 
 	_pattern := strings.TrimPrefix(pattern, "/")
@@ -112,7 +111,7 @@ func (t *Trie) Define(pattern string) *Node {
 //
 func (t *Trie) Match(path string) *Matched {
 	if path == "" || path[0] != '/' {
-		panic(fmt.Errorf(`Path is not start with "/": "%s"`, path))
+		panic(fmt.Errorf(`path is not start with "/": "%s"`, path))
 	}
 	fixedLen := len(path)
 	if t.fpr {
@@ -263,7 +262,7 @@ func defineNode(parent *Node, frags []string, ignoreCase bool) *Node {
 		return child
 	}
 	if child.wildcard {
-		panic(fmt.Errorf(`Can't define pattern after wildcard: "%s"`, child.pattern))
+		panic(fmt.Errorf(`can't define pattern after wildcard: "%s"`, child.pattern))
 	}
 	return defineNode(child, frags, ignoreCase)
 }
@@ -315,7 +314,7 @@ func parseNode(parent *Node, frag string, ignoreCase bool) *Node {
 					name = name[0:index]
 					node.regex = regexp.MustCompile(regex)
 				} else {
-					panic(fmt.Errorf(`Invalid pattern: "%s"`, frag))
+					panic(fmt.Errorf(`invalid pattern: "%s"`, frag))
 				}
 			}
 		} else if trailing == '*' {
@@ -324,22 +323,22 @@ func parseNode(parent *Node, frag string, ignoreCase bool) *Node {
 		}
 		// name must be word characters `[0-9A-Za-z_]`
 		if !wordReg.MatchString(name) {
-			panic(fmt.Errorf(`Invalid pattern: "%s"`, frag))
+			panic(fmt.Errorf(`invalid pattern: "%s"`, frag))
 		}
 		node.name = name
 		if child := parent.varyChild; child != nil {
 			if child.name != name || child.wildcard != node.wildcard {
-				panic(fmt.Errorf(`Invalid pattern: "%s"`, frag))
+				panic(fmt.Errorf(`invalid pattern: "%s"`, frag))
 			}
 			if child.regex != nil && child.regex.String() != node.regex.String() {
-				panic(fmt.Errorf(`Invalid pattern: "%s"`, frag))
+				panic(fmt.Errorf(`invalid pattern: "%s"`, frag))
 			}
 			return child
 		}
 
 		parent.varyChild = node
 	} else if frag[0] == '*' || frag[0] == '(' || frag[0] == ')' {
-		panic(fmt.Errorf(`Invalid pattern: "%s"`, frag))
+		panic(fmt.Errorf(`invalid pattern: "%s"`, frag))
 	} else {
 		parent.children[_frag] = node
 	}

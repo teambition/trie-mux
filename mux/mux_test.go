@@ -570,11 +570,6 @@ func TestMux(t *testing.T) {
 		assert.Equal("/abc/xyz/", string(body))
 		res.Body.Close()
 
-		res, err = Request("PUT", ts.URL+"/abc/xyz", nil)
-		assert.Nil(err)
-		assert.Equal(307, res.StatusCode)
-		res.Body.Close()
-
 		req = httptest.NewRequest("PUT", "/abc/xyz", nil)
 		w = httptest.NewRecorder()
 		mux.ServeHTTP(w, req)

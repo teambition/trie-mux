@@ -78,7 +78,7 @@ func (m *Mux) Otherwise(handler HandlerFunc) {
 // communication with a proxy).
 func (m *Mux) Handle(method, pattern string, handler HandlerFunc) {
 	if method == "" {
-		panic(fmt.Errorf("Invalid method"))
+		panic(fmt.Errorf("invalid method"))
 	}
 	m.trie.Define(pattern).Handle(strings.ToUpper(method), handler)
 }
