@@ -205,13 +205,21 @@ type Matched struct {
 
 // Node represents a node on defined patterns that can be matched.
 type Node struct {
-	name, allow, pattern, suffix string
-	endpoint, wildcard           bool
-	parent                       *Node
-	varyChildren                 []*Node
-	children                     map[string]*Node
-	handlers                     map[string]interface{}
-	regex                        *regexp.Regexp
+	name, allow, pattern, frag, suffix string
+	endpoint, wildcard                 bool
+	parent                             *Node
+	varyChildren                       []*Node
+	children                           map[string]*Node
+	handlers                           map[string]interface{}
+	regex                              *regexp.Regexp
+}
+
+func (n *Node) getFrags() string {
+	frags := n.frag
+	if n.parent != nil {
+		frags = n.parent.getFrags() + "/" + frags
+	}
+	return frags
 }
 
 func (n *Node) getChild(key string) *Node {
@@ -273,7 +281,7 @@ func defineNode(parent *Node, frags []string, ignoreCase bool) *Node {
 		return child
 	}
 	if child.wildcard {
-		panic(fmt.Errorf(`can't define pattern after wildcard: "%s"`, child.pattern))
+		panic(fmt.Errorf(`can't define pattern after wildcard: "%s"`, child.getFrags()))
 	}
 	return defineNode(child, frags, ignoreCase)
 }
@@ -311,6 +319,7 @@ func parseNode(parent *Node, frag string, ignoreCase bool) *Node {
 	}
 
 	node := &Node{
+		frag:     frag,
 		parent:   parent,
 		children: make(map[string]*Node),
 		handlers: make(map[string]interface{}),
@@ -370,9 +379,12 @@ func parseNode(parent *Node, frag string, ignoreCase bool) *Node {
 			}
 			if child.wildcard {
 				if !node.wildcard {
-					panic(fmt.Errorf(`can't define pattern after wildcard: "%s"`, frag))
+					panic(fmt.Errorf(`can't define "%s" after: "%s"`, node.getFrags(), child.getFrags()))
 				}
 				return child
+			}
+			if child.suffix == "" && child.regex == nil && (node.suffix != "" || node.regex != nil) {
+				panic(fmt.Errorf(`can't define "%s" after: "%s"`, node.getFrags(), child.getFrags()))
 			}
 			if child.suffix == node.suffix {
 				if child.regex == nil && node.regex == nil {

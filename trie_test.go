@@ -147,6 +147,16 @@ func TestGearTrieDefine(t *testing.T) {
 		})
 		node1 := tr1.Define("/a/:b+:delete")
 		EqualPtr(t, parent.varyChildren[1], node1)
+
+		tr2 := New()
+		tr2.Define("/a/:b/c")
+		tr2.Define("/x/:b+:delete")
+		assert.Panics(func() {
+			tr2.Define("/a/:b+:delete")
+		})
+		assert.Panics(func() {
+			tr2.Define("/x/:b(xyz)+:delete")
+		})
 	})
 
 	t.Run("wildcard pattern", func(t *testing.T) {
