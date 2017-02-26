@@ -29,9 +29,14 @@ type Options struct {
 	TrailingSlashRedirect bool
 }
 
+// the valid characters for the path component are:
+// [A-Za-z0-9!$%&'()*+,-.:;=@_~]
+// http://stackoverflow.com/questions/4669692/valid-characters-for-directory-part-of-a-url-for-short-links
+
 var (
 	wordReg        = regexp.MustCompile(`^\w+$`)
-	doubleColonReg = regexp.MustCompile(`^::\w*$`)
+	suffixReg      = regexp.MustCompile(`\+[A-Za-z0-9!$%&'*+,-.:;=@_~]*$`)
+	doubleColonReg = regexp.MustCompile(`^::[A-Za-z0-9!$%&'*+,-.:;=@_~]*$`)
 	multiSlashReg  = regexp.MustCompile(`/{2,}`)
 	defaultOptions = Options{
 		IgnoreCase:            true,
@@ -153,19 +158,23 @@ func (t *Trie) Match(path string) *Matched {
 				matched.Params[parent.name] = path[start:end]
 				break
 			} else {
+				if parent.suffix != "" {
+					frag = frag[0 : len(frag)-len(parent.suffix)]
+				}
 				matched.Params[parent.name] = frag
 			}
 		}
 		start = i + 1
 	}
 
-	if parent.endpoint {
+	switch {
+	case parent.endpoint:
 		matched.Node = parent
 		if t.fpr && fixedLen > 0 {
 			matched.FPR = path
 			matched.Node = nil
 		}
-	} else if t.tsr && parent.getChild("") != nil {
+	case t.tsr && parent.getChild("") != nil:
 		// TrailingSlashRedirect: /acb/efg -> /acb/efg/
 		matched.TSR = path + "/"
 		if t.fpr && fixedLen > 0 {
@@ -173,6 +182,7 @@ func (t *Trie) Match(path string) *Matched {
 			matched.TSR = ""
 		}
 	}
+
 	return matched
 }
 
@@ -195,12 +205,13 @@ type Matched struct {
 
 // Node represents a node on defined patterns that can be matched.
 type Node struct {
-	name, allow, pattern string
-	endpoint, wildcard   bool
-	parent, varyChild    *Node
-	children             map[string]*Node
-	handlers             map[string]interface{}
-	regex                *regexp.Regexp
+	name, allow, pattern, suffix string
+	endpoint, wildcard           bool
+	parent                       *Node
+	varyChildren                 []*Node
+	children                     map[string]*Node
+	handlers                     map[string]interface{}
+	regex                        *regexp.Regexp
 }
 
 func (n *Node) getChild(key string) *Node {
@@ -268,13 +279,23 @@ func defineNode(parent *Node, frags []string, ignoreCase bool) *Node {
 }
 
 func matchNode(parent *Node, frag string) (child *Node) {
-	if child = parent.getChild(frag); child == nil {
-		child = parent.varyChild
-		if child != nil && child.regex != nil && !child.regex.MatchString(frag) {
-			child = nil
-		}
+	if child = parent.getChild(frag); child != nil {
+		return
 	}
-	return
+	for _, child = range parent.varyChildren {
+		_frag := frag
+		if child.suffix != "" {
+			if frag == child.suffix || !strings.HasSuffix(frag, child.suffix) {
+				continue
+			}
+			_frag = frag[0 : len(frag)-len(child.suffix)]
+		}
+		if child.regex != nil && !child.regex.MatchString(_frag) {
+			continue
+		}
+		return
+	}
+	return nil
 }
 
 func parseNode(parent *Node, frag string, ignoreCase bool) *Node {
@@ -285,7 +306,6 @@ func parseNode(parent *Node, frag string, ignoreCase bool) *Node {
 	if ignoreCase {
 		_frag = strings.ToLower(_frag)
 	}
-
 	if node := parent.getChild(_frag); node != nil {
 		return node
 	}
@@ -296,50 +316,82 @@ func parseNode(parent *Node, frag string, ignoreCase bool) *Node {
 		handlers: make(map[string]interface{}),
 	}
 
-	if frag == "" {
+	switch {
+	case frag == "":
 		parent.children[frag] = node
-	} else if doubleColonReg.MatchString(frag) {
+
+	case doubleColonReg.MatchString(frag):
 		// pattern "/a/::" should match "/a/:"
 		// pattern "/a/::bc" should match "/a/:bc"
 		// pattern "/a/::/bc" should match "/a/:/bc"
 		parent.children[_frag] = node
-	} else if frag[0] == ':' {
-		var name, regex string
+
+	case frag[0] == ':':
+		var name, regex, suffix string
 		name = frag[1:]
-		trailing := name[len(name)-1]
-		if trailing == ')' {
-			if index := strings.IndexRune(name, '('); index > 0 {
-				regex = name[index+1 : len(name)-1]
-				if len(regex) > 0 {
-					name = name[0:index]
-					node.regex = regexp.MustCompile(regex)
-				} else {
+
+		switch name[len(name)-1] {
+		case '*':
+			name = name[0 : len(name)-1]
+			node.wildcard = true
+
+		default:
+			suffix = suffixReg.FindString(name)
+			if suffix != "" {
+				name = name[0 : len(name)-len(suffix)]
+				node.suffix = suffix[1:]
+				if node.suffix == "" {
 					panic(fmt.Errorf(`invalid pattern: "%s"`, frag))
 				}
 			}
-		} else if trailing == '*' {
-			name = name[0 : len(name)-1]
-			node.wildcard = true
+
+			if name[len(name)-1] == ')' {
+				if index := strings.IndexRune(name, '('); index > 0 {
+					regex = name[index+1 : len(name)-1]
+					if len(regex) > 0 {
+						name = name[0:index]
+						node.regex = regexp.MustCompile(regex)
+					} else {
+						panic(fmt.Errorf(`invalid pattern: "%s"`, frag))
+					}
+				}
+			}
 		}
+
 		// name must be word characters `[0-9A-Za-z_]`
 		if !wordReg.MatchString(name) {
 			panic(fmt.Errorf(`invalid pattern: "%s"`, frag))
 		}
 		node.name = name
-		if child := parent.varyChild; child != nil {
-			if child.name != name || child.wildcard != node.wildcard {
+		// check if node exists
+		for _, child := range parent.varyChildren {
+			if child.name != node.name {
 				panic(fmt.Errorf(`invalid pattern: "%s"`, frag))
 			}
-			if child.regex != nil && child.regex.String() != node.regex.String() {
-				panic(fmt.Errorf(`invalid pattern: "%s"`, frag))
+			if child.wildcard {
+				if !node.wildcard {
+					panic(fmt.Errorf(`can't define pattern after wildcard: "%s"`, frag))
+				}
+				return child
 			}
-			return child
+			if child.suffix == node.suffix {
+				if child.regex == nil && node.regex == nil {
+					return child
+				}
+				if child.regex != nil && node.regex != nil && child.regex.String() == node.regex.String() {
+					return child
+				}
+				if child.regex == nil && node.regex != nil {
+					panic(fmt.Errorf(`invalid pattern: "%s"`, frag))
+				}
+			}
 		}
+		parent.varyChildren = append(parent.varyChildren, node)
 
-		parent.varyChild = node
-	} else if frag[0] == '*' || frag[0] == '(' || frag[0] == ')' {
+	case frag[0] == '*' || frag[0] == '(' || frag[0] == ')':
 		panic(fmt.Errorf(`invalid pattern: "%s"`, frag))
-	} else {
+
+	default:
 		parent.children[_frag] = node
 	}
 

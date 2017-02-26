@@ -47,7 +47,7 @@ func TestGearTrieDefine(t *testing.T) {
 
 		parent := tr1.Define("/a")
 		EqualPtr(t, node.parent, parent)
-		NotEqualPtr(t, parent.varyChild, node)
+		assert.Equal(0, len(parent.varyChildren))
 		EqualPtr(t, parent.getChild("b"), node)
 		child := tr1.Define("/a/b/c")
 		EqualPtr(t, child.parent, node)
@@ -69,7 +69,7 @@ func TestGearTrieDefine(t *testing.T) {
 
 		parent := tr1.Define("/a")
 		EqualPtr(t, node.parent, parent)
-		NotEqualPtr(t, parent.varyChild, node)
+		assert.Equal(0, len(parent.varyChildren))
 		EqualPtr(t, parent.getChild(":"), tr1.Define("/a/::"))
 		EqualPtr(t, parent.getChild(":b"), tr1.Define("/a/::b"))
 		EqualPtr(t, parent.getChild(":x"), tr1.Define("/a/::x"))
@@ -96,7 +96,7 @@ func TestGearTrieDefine(t *testing.T) {
 		node := tr1.Define("/a/:b")
 		assert.Equal(node.name, "b")
 		assert.False(node.wildcard)
-		assert.Nil(node.varyChild)
+		assert.Equal(0, len(node.varyChildren))
 		assert.Equal(node.pattern, "/a/:b")
 		assert.Panics(func() {
 			tr1.Define("/a/:x")
@@ -104,13 +104,49 @@ func TestGearTrieDefine(t *testing.T) {
 
 		parent := tr1.Define("/a")
 		assert.Equal(parent.name, "")
-		EqualPtr(t, parent.varyChild, node)
+		EqualPtr(t, parent.varyChildren[0], node)
 		EqualPtr(t, node.parent, parent)
 		child := tr1.Define("/a/:b/c")
 		EqualPtr(t, child.parent, node)
 		assert.Panics(func() {
 			tr1.Define("/a/:x/c")
 		})
+	})
+
+	t.Run("named pattern with suffix", func(t *testing.T) {
+		assert := assert.New(t)
+
+		tr1 := New()
+		assert.Panics(func() {
+			tr1.Define("/a/:+")
+		})
+		assert.Panics(func() {
+			tr1.Define("/a/:+a")
+		})
+
+		node := tr1.Define("/a/:b+:undelete")
+		assert.Equal(node.name, "b")
+		assert.False(node.wildcard)
+		assert.Equal(0, len(node.varyChildren))
+		assert.Equal(node.pattern, "/a/:b+:undelete")
+		assert.Panics(func() {
+			tr1.Define("/a/:x")
+		})
+		assert.Panics(func() {
+			tr1.Define("/a/:x+:undelete")
+		})
+
+		parent := tr1.Define("/a")
+		assert.Equal(parent.name, "")
+		EqualPtr(t, parent.varyChildren[0], node)
+		EqualPtr(t, node.parent, parent)
+		child := tr1.Define("/a/:b+:undelete/c")
+		EqualPtr(t, child.parent, node)
+		assert.Panics(func() {
+			tr1.Define("/a/:x/c")
+		})
+		node1 := tr1.Define("/a/:b+:delete")
+		EqualPtr(t, parent.varyChildren[1], node1)
 	})
 
 	t.Run("wildcard pattern", func(t *testing.T) {
@@ -133,16 +169,22 @@ func TestGearTrieDefine(t *testing.T) {
 		node := tr1.Define("/a/:b*")
 		assert.Equal(node.name, "b")
 		assert.True(node.wildcard)
-		assert.Nil(node.varyChild)
+		assert.Equal(0, len(node.varyChildren))
 		assert.Equal(node.pattern, "/a/:b*")
 		assert.Panics(func() {
 			tr1.Define("/a/:x*")
+		})
+		assert.Panics(func() {
+			tr1.Define("/a/:b")
+		})
+		assert.Panics(func() {
+			tr1.Define("/a/:b/c")
 		})
 
 		parent := tr1.Define("/a")
 		assert.Equal(parent.name, "")
 		assert.False(parent.wildcard)
-		EqualPtr(t, parent.varyChild, node)
+		EqualPtr(t, parent.varyChildren[0], node)
 		EqualPtr(t, node.parent, parent)
 		assert.Panics(func() {
 			tr1.Define("/a/:b*/c")
@@ -191,25 +233,27 @@ func TestGearTrieDefine(t *testing.T) {
 		assert.Equal(node.name, "b")
 		assert.Equal(node.pattern, "/a/:b(x|y|z)")
 		assert.False(node.wildcard)
-		assert.Nil(node.varyChild)
+		assert.Equal(0, len(node.varyChildren))
 		assert.Equal(node, tr1.Define("/a/:b(x|y|z)"))
-		assert.Panics(func() {
-			tr1.Define("/a/:b(xyz)")
-		})
 		assert.Panics(func() {
 			tr1.Define("/a/:x(x|y|z)")
 		})
 
+		NotEqualPtr(t, node, tr1.Define("/a/:b(xyz)"))
+
 		parent := tr1.Define("/a")
 		assert.Equal(parent.name, "")
 		assert.False(parent.wildcard)
-		EqualPtr(t, parent.varyChild, node)
+		EqualPtr(t, parent.varyChildren[0], node)
 		EqualPtr(t, node.parent, parent)
 
-		child := tr1.Define("/a/:b(x|y|z)/c")
+		child := tr1.Define("/a/:b(x|y|z)/:c")
 		EqualPtr(t, child.parent, node)
 		assert.Panics(func() {
-			tr1.Define("/a/:x(x|y|z)/c")
+			tr1.Define("/a/:x(x|y|z)/:c")
+		})
+		assert.Panics(func() {
+			tr1.Define("/a/:b(x|y|z)/:c(xyz)")
 		})
 	})
 
@@ -311,6 +355,28 @@ func TestGearTrieMatch(t *testing.T) {
 		assert.Nil(tr1.Match("/ab/xyz汉/123").Node)
 	})
 
+	t.Run("named pattern with suffix", func(t *testing.T) {
+		assert := assert.New(t)
+
+		tr1 := New()
+		node := tr1.Define("/a/:b+:del")
+		res := tr1.Match("/a/xyz汉:del")
+		assert.Equal("xyz汉", res.Params["b"])
+		assert.Equal("", res.Params["x"])
+		EqualPtr(t, node, res.Node)
+		assert.Nil(tr1.Match("/a").Node)
+		assert.Nil(tr1.Match("/a/:del").Node)
+		assert.Nil(tr1.Match("/a/xyz汉").Node)
+		assert.Nil(tr1.Match("/a/xyz汉:de").Node)
+		assert.Nil(tr1.Match("/a/xyz汉/123").Node)
+
+		node2 := tr1.Define("/a/:b+del")
+		res2 := tr1.Match("/a/xyz汉del")
+		assert.Equal("xyz汉", res.Params["b"])
+		EqualPtr(t, node2, res2.Node)
+		assert.Nil(tr1.Match("/a/xyz汉cel").Node)
+	})
+
 	t.Run("wildcard pattern", func(t *testing.T) {
 		assert := assert.New(t)
 
@@ -364,6 +430,49 @@ func TestGearTrieMatch(t *testing.T) {
 		res = tr1.Match("/a/z/c")
 		assert.Equal("z", res.Params["b"])
 		EqualPtr(t, child, res.Node)
+	})
+
+	t.Run("regexp pattern with suffix", func(t *testing.T) {
+		assert := assert.New(t)
+
+		tr1 := New()
+		node := tr1.Define("/a/:b(^(x|y)$)+:cancel")
+		assert.Nil(tr1.Match("/a/x").Node)
+		res := tr1.Match("/a/x:cancel")
+		assert.Equal("x", res.Params["b"])
+		EqualPtr(t, node, res.Node)
+		res = tr1.Match("/a/y:cancel")
+		assert.Equal("y", res.Params["b"])
+		EqualPtr(t, node, res.Node)
+		assert.Nil(tr1.Match("/a/z:cancel").Node)
+
+		node = tr1.Define("/a/:b(^(x|y)$)++undelete")
+		assert.Nil(tr1.Match("/a/x").Node)
+		res = tr1.Match("/a/x+undelete")
+		assert.Equal("x", res.Params["b"])
+		EqualPtr(t, node, res.Node)
+		res = tr1.Match("/a/y+undelete")
+		assert.Equal("y", res.Params["b"])
+		EqualPtr(t, node, res.Node)
+		assert.Nil(tr1.Match("/a/z+undelete").Node)
+
+		node = tr1.Define("/a/:b(^(a|z)$)++undelete")
+		assert.Nil(tr1.Match("/a/x").Node)
+		res = tr1.Match("/a/a+undelete")
+		assert.Equal("a", res.Params["b"])
+		EqualPtr(t, node, res.Node)
+		res = tr1.Match("/a/z+undelete")
+		assert.Equal("z", res.Params["b"])
+		EqualPtr(t, node, res.Node)
+		res = tr1.Match("/a/y+undelete")
+		assert.Equal("y", res.Params["b"])
+		EqualPtr(t, tr1.Define("/a/:b(^(x|y)$)++undelete"), res.Node)
+
+		node = tr1.Define(`/api/:resource/:ID(^\d+$)+:cancel`)
+		res = tr1.Match("/api/task/123:cancel")
+		assert.Equal("task", res.Params["resource"])
+		assert.Equal("123", res.Params["ID"])
+		EqualPtr(t, node, res.Node)
 	})
 
 	t.Run("IgnoreCase option", func(t *testing.T) {
