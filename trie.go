@@ -7,6 +7,9 @@ import (
 	"strings"
 )
 
+// Version is trie-mux version
+const Version = "1.3.2"
+
 // Options is options for Trie.
 type Options struct {
 	// Ignore case when matching URL path.
@@ -235,7 +238,7 @@ func (n *Node) getChild(key string) *Node {
 //
 func (n *Node) Handle(method string, handler interface{}) {
 	if n.GetHandler(method) != nil {
-		panic(fmt.Errorf(`"%s" already defined`, n.pattern))
+		panic(fmt.Errorf(`"%s" already defined`, n.getFrags()))
 	}
 	n.handlers[method] = handler
 	if n.allow == "" {
@@ -350,7 +353,7 @@ func parseNode(parent *Node, frag string, ignoreCase bool) *Node {
 				name = name[0 : len(name)-len(suffix)]
 				node.suffix = suffix[1:]
 				if node.suffix == "" {
-					panic(fmt.Errorf(`invalid pattern: "%s"`, frag))
+					panic(fmt.Errorf(`invalid pattern: "%s"`, node.getFrags()))
 				}
 			}
 
@@ -361,7 +364,7 @@ func parseNode(parent *Node, frag string, ignoreCase bool) *Node {
 						name = name[0:index]
 						node.regex = regexp.MustCompile(regex)
 					} else {
-						panic(fmt.Errorf(`invalid pattern: "%s"`, frag))
+						panic(fmt.Errorf(`invalid pattern: "%s"`, node.getFrags()))
 					}
 				}
 			}
@@ -369,13 +372,13 @@ func parseNode(parent *Node, frag string, ignoreCase bool) *Node {
 
 		// name must be word characters `[0-9A-Za-z_]`
 		if !wordReg.MatchString(name) {
-			panic(fmt.Errorf(`invalid pattern: "%s"`, frag))
+			panic(fmt.Errorf(`invalid pattern: "%s"`, node.getFrags()))
 		}
 		node.name = name
 		// check if node exists
 		for _, child := range parent.varyChildren {
 			if child.name != node.name {
-				panic(fmt.Errorf(`invalid pattern: "%s"`, frag))
+				panic(fmt.Errorf(`invalid pattern: "%s"`, node.getFrags()))
 			}
 			if child.wildcard {
 				if !node.wildcard {
@@ -394,14 +397,14 @@ func parseNode(parent *Node, frag string, ignoreCase bool) *Node {
 					return child
 				}
 				if child.regex == nil && node.regex != nil {
-					panic(fmt.Errorf(`invalid pattern: "%s"`, frag))
+					panic(fmt.Errorf(`invalid pattern: "%s"`, node.getFrags()))
 				}
 			}
 		}
 		parent.varyChildren = append(parent.varyChildren, node)
 
 	case frag[0] == '*' || frag[0] == '(' || frag[0] == ')':
-		panic(fmt.Errorf(`invalid pattern: "%s"`, frag))
+		panic(fmt.Errorf(`invalid pattern: "%s"`, node.getFrags()))
 
 	default:
 		parent.children[_frag] = node
