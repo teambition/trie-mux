@@ -119,7 +119,7 @@ func main() {
 
 ## Pattern Rule
 
-The defined pattern can contain three types of parameters:
+The defined pattern can contain six types of parameters:
 
 | Syntax | Description |
 |--------|------|

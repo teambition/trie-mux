@@ -8,7 +8,7 @@ import (
 )
 
 // Version is trie-mux version
-const Version = "1.3.2"
+const Version = "1.3.3"
 
 // Options is options for Trie.
 type Options struct {
@@ -339,8 +339,7 @@ func parseNode(parent *Node, frag string, ignoreCase bool) *Node {
 		parent.children[_frag] = node
 
 	case frag[0] == ':':
-		var name, regex, suffix string
-		name = frag[1:]
+		name := frag[1:]
 
 		switch name[len(name)-1] {
 		case '*':
@@ -348,7 +347,7 @@ func parseNode(parent *Node, frag string, ignoreCase bool) *Node {
 			node.wildcard = true
 
 		default:
-			suffix = suffixReg.FindString(name)
+			var suffix = suffixReg.FindString(name)
 			if suffix != "" {
 				name = name[0 : len(name)-len(suffix)]
 				node.suffix = suffix[1:]
@@ -359,7 +358,7 @@ func parseNode(parent *Node, frag string, ignoreCase bool) *Node {
 
 			if name[len(name)-1] == ')' {
 				if index := strings.IndexRune(name, '('); index > 0 {
-					regex = name[index+1 : len(name)-1]
+					var regex = name[index+1 : len(name)-1]
 					if len(regex) > 0 {
 						name = name[0:index]
 						node.regex = regexp.MustCompile(regex)
@@ -382,12 +381,12 @@ func parseNode(parent *Node, frag string, ignoreCase bool) *Node {
 			}
 			if child.wildcard {
 				if !node.wildcard {
-					panic(fmt.Errorf(`can't define "%s" after: "%s"`, node.getFrags(), child.getFrags()))
+					panic(fmt.Errorf(`can't define "%s" after "%s"`, node.getFrags(), child.getFrags()))
 				}
 				return child
 			}
 			if child.suffix == "" && child.regex == nil && (node.suffix != "" || node.regex != nil) {
-				panic(fmt.Errorf(`can't define "%s" after: "%s"`, node.getFrags(), child.getFrags()))
+				panic(fmt.Errorf(`can't define "%s" after "%s"`, node.getFrags(), child.getFrags()))
 			}
 			if child.suffix == node.suffix {
 				if child.regex == nil && node.regex == nil {
