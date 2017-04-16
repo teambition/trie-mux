@@ -32,10 +32,9 @@ type Options struct {
 	TrailingSlashRedirect bool
 }
 
-// the valid characters for the path component are:
+// the valid characters for the path component:
 // [A-Za-z0-9!$%&'()*+,-.:;=@_~]
 // http://stackoverflow.com/questions/4669692/valid-characters-for-directory-part-of-a-url-for-short-links
-
 var (
 	wordReg        = regexp.MustCompile(`^\w+$`)
 	suffixReg      = regexp.MustCompile(`\+[A-Za-z0-9!$%&'*+,-.:;=@_~]*$`)
@@ -141,7 +140,7 @@ func (t *Trie) Match(path string) *Matched {
 			node = matchNode(parent, strings.ToLower(frag))
 		}
 		if node == nil {
-			// TrailingSlashRedirect: /acb/efg/ -> /acb/efg
+			// TrailingSlashRedirect: /abc/efg/ -> /abc/efg
 			if t.tsr && parent.endpoint && i == end && frag == "" {
 				matched.TSR = path[:end-1]
 				if t.fpr && fixedLen > 0 {
@@ -178,7 +177,7 @@ func (t *Trie) Match(path string) *Matched {
 			matched.Node = nil
 		}
 	case t.tsr && parent.getChild("") != nil:
-		// TrailingSlashRedirect: /acb/efg -> /acb/efg/
+		// TrailingSlashRedirect: /abc/efg -> /abc/efg/
 		matched.TSR = path + "/"
 		if t.fpr && fixedLen > 0 {
 			matched.FPR = matched.TSR
