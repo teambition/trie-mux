@@ -124,11 +124,29 @@ func TestGearTrieDefine(t *testing.T) {
 			tr1.Define("/a/:+a")
 		})
 
-		node := tr1.Define("/a/:b+:undelete")
-		assert.Equal(node.name, "b")
-		assert.False(node.wildcard)
-		assert.Equal(0, len(node.varyChildren))
-		assert.Equal(node.pattern, "/a/:b+:undelete")
+		node1 := tr1.Define("/a/:b")
+		assert.Equal(node1.name, "b")
+		assert.False(node1.wildcard)
+		assert.Equal(0, len(node1.varyChildren))
+		assert.Equal(1, len(node1.parent.varyChildren))
+		assert.Equal(node1.pattern, "/a/:b")
+
+		parent := tr1.Define("/a")
+		assert.Equal(parent.name, "")
+		EqualPtr(t, parent, node1.parent)
+		EqualPtr(t, parent.varyChildren[0], node1)
+
+		node2 := tr1.Define("/a/:b+:undelete")
+		assert.Equal(node2.name, "b")
+		assert.False(node2.wildcard)
+		assert.Equal(0, len(node2.varyChildren))
+		assert.Equal(2, len(node2.parent.varyChildren))
+		EqualPtr(t, tr1.Define("/a/:b+:undelete"), node2)
+		EqualPtr(t, parent.varyChildren[0], node2)
+		EqualPtr(t, parent.varyChildren[1], node1)
+
+		assert.Equal(node2.pattern, "/a/:b+:undelete")
+
 		assert.Panics(func() {
 			tr1.Define("/a/:x")
 		})
@@ -136,26 +154,25 @@ func TestGearTrieDefine(t *testing.T) {
 			tr1.Define("/a/:x+:undelete")
 		})
 
-		parent := tr1.Define("/a")
-		assert.Equal(parent.name, "")
-		EqualPtr(t, parent.varyChildren[0], node)
-		EqualPtr(t, node.parent, parent)
 		child := tr1.Define("/a/:b+:undelete/c")
-		EqualPtr(t, child.parent, node)
+		EqualPtr(t, child.parent, node2)
 		assert.Panics(func() {
 			tr1.Define("/a/:x/c")
 		})
-		node1 := tr1.Define("/a/:b+:delete")
-		EqualPtr(t, parent.varyChildren[1], node1)
+		node3 := tr1.Define("/a/:b+:delete")
+
+		EqualPtr(t, parent.varyChildren[0], node2)
+		EqualPtr(t, parent.varyChildren[1], node3)
+		EqualPtr(t, parent.varyChildren[2], node1)
 
 		tr2 := New()
 		tr2.Define("/a/:b/c")
-		tr2.Define("/x/:b+:delete")
+		tr2.Define("/a/:b+:delete")
 		assert.Panics(func() {
-			tr2.Define("/a/:b+:delete")
+			tr2.Define("/a/:x+:delete")
 		})
-		assert.Panics(func() {
-			tr2.Define("/x/:b(xyz)+:delete")
+		assert.NotPanics(func() {
+			tr2.Define("/a/:b(xyz)+:delete")
 		})
 	})
 
@@ -262,7 +279,7 @@ func TestGearTrieDefine(t *testing.T) {
 		assert.Panics(func() {
 			tr1.Define("/a/:x(x|y|z)/:c")
 		})
-		assert.Panics(func() {
+		assert.NotPanics(func() {
 			tr1.Define("/a/:b(x|y|z)/:c(xyz)")
 		})
 	})

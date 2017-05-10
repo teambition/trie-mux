@@ -4,6 +4,7 @@ package trie
 import (
 	"fmt"
 	"regexp"
+	"sort"
 	"strings"
 )
 
@@ -36,10 +37,10 @@ type Options struct {
 // [A-Za-z0-9!$%&'()*+,-.:;=@_~]
 // http://stackoverflow.com/questions/4669692/valid-characters-for-directory-part-of-a-url-for-short-links
 var (
+	multiSlashReg  = regexp.MustCompile(`/{2,}`)
 	wordReg        = regexp.MustCompile(`^\w+$`)
 	suffixReg      = regexp.MustCompile(`\+[A-Za-z0-9!$%&'*+,-.:;=@_~]*$`)
 	doubleColonReg = regexp.MustCompile(`^::[A-Za-z0-9!$%&'*+,-.:;=@_~]*$`)
-	multiSlashReg  = regexp.MustCompile(`/{2,}`)
 	defaultOptions = Options{
 		IgnoreCase:            true,
 		TrailingSlashRedirect: true,
@@ -375,31 +376,44 @@ func parseNode(parent *Node, frag string, ignoreCase bool) *Node {
 		node.name = name
 		// check if node exists
 		for _, child := range parent.varyChildren {
-			if child.name != node.name {
-				panic(fmt.Errorf(`invalid pattern: "%s"`, node.getFrags()))
-			}
 			if child.wildcard {
 				if !node.wildcard {
 					panic(fmt.Errorf(`can't define "%s" after "%s"`, node.getFrags(), child.getFrags()))
 				}
+				if child.name != node.name {
+					panic(fmt.Errorf(`invalid pattern name "%s", as prev defined "%s"`, node.name, child.getFrags()))
+				}
 				return child
 			}
-			if child.suffix == "" && child.regex == nil && (node.suffix != "" || node.regex != nil) {
-				panic(fmt.Errorf(`can't define "%s" after "%s"`, node.getFrags(), child.getFrags()))
+
+			if child.suffix != node.suffix {
+				continue
 			}
-			if child.suffix == node.suffix {
-				if child.regex == nil && node.regex == nil {
-					return child
+
+			if (child.regex == nil && node.regex == nil) ||
+				child.regex != nil && node.regex != nil && child.regex.String() == node.regex.String() {
+				if child.name != node.name {
+					panic(fmt.Errorf(`invalid pattern name "%s", as prev defined "%s"`, node.name, child.getFrags()))
 				}
-				if child.regex != nil && node.regex != nil && child.regex.String() == node.regex.String() {
-					return child
-				}
-				if child.regex == nil && node.regex != nil {
-					panic(fmt.Errorf(`invalid pattern: "%s"`, node.getFrags()))
-				}
+				return child
 			}
 		}
 		parent.varyChildren = append(parent.varyChildren, node)
+		if s := parent.varyChildren; len(s) > 1 {
+			sort.SliceStable(s, func(i, j int) bool {
+				// i > j
+				switch {
+				case s[i].suffix == "" && s[j].suffix != "":
+					return false
+				case s[i].suffix != "" && s[j].suffix == "":
+					return true
+				case s[i].regex != nil && s[j].regex == nil:
+					return true
+				default:
+					return false
+				}
+			})
+		}
 
 	case frag[0] == '*' || frag[0] == '(' || frag[0] == ')':
 		panic(fmt.Errorf(`invalid pattern: "%s"`, node.getFrags()))
