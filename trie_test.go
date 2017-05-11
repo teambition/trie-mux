@@ -284,6 +284,42 @@ func TestGearTrieDefine(t *testing.T) {
 		})
 	})
 
+	t.Run("complex pattern", func(t *testing.T) {
+		assert := assert.New(t)
+
+		tr := New()
+		p := tr.Define("/a")
+		n1 := tr.Define("/a/:b")
+		assert.Panics(func() {
+			tr.Define("/a/:c")
+		})
+		n2 := tr.Define("/a/:c(x|y)")
+		n3 := tr.Define("/a/:d+a1")
+		n4 := tr.Define("/a/:b+a2")
+		assert.Panics(func() {
+			tr.Define("/a/:bb+a2")
+		})
+		n5 := tr.Define("/a/:b(a+)+a2")
+		n6 := tr.Define("/a/:b(b+)+a2")
+		n7 := tr.Define("/a/:b(c+)")
+		assert.Panics(func() {
+			tr.Define("/a/:bb(c+)")
+		})
+		n8 := tr.Define("/a/:w*")
+		assert.Panics(func() {
+			tr.Define("/a/:b(d+)")
+		})
+
+		EqualPtr(t, p.varyChildren[0], n5)
+		EqualPtr(t, p.varyChildren[1], n6)
+		EqualPtr(t, p.varyChildren[2], n3)
+		EqualPtr(t, p.varyChildren[3], n4)
+		EqualPtr(t, p.varyChildren[4], n2)
+		EqualPtr(t, p.varyChildren[5], n7)
+		EqualPtr(t, p.varyChildren[6], n1)
+		EqualPtr(t, p.varyChildren[7], n8)
+	})
+
 	t.Run("ignoreCase option", func(t *testing.T) {
 		tr := New(Options{IgnoreCase: true})
 		node := tr.Define("/A/b")

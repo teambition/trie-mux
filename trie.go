@@ -9,7 +9,7 @@ import (
 )
 
 // Version is trie-mux version
-const Version = "1.3.3"
+const Version = "1.4.0"
 
 // Options is options for Trie.
 type Options struct {
@@ -390,7 +390,7 @@ func parseNode(parent *Node, frag string, ignoreCase bool) *Node {
 				continue
 			}
 
-			if (child.regex == nil && node.regex == nil) ||
+			if !node.wildcard && (child.regex == nil && node.regex == nil) ||
 				child.regex != nil && node.regex != nil && child.regex.String() == node.regex.String() {
 				if child.name != node.name {
 					panic(fmt.Errorf(`invalid pattern name "%s", as prev defined "%s"`, node.name, child.getFrags()))
