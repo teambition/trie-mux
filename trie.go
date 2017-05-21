@@ -9,7 +9,7 @@ import (
 )
 
 // Version is trie-mux version
-const Version = "1.4.0"
+const Version = "1.4.1"
 
 // Options is options for Trie.
 type Options struct {
@@ -36,6 +36,7 @@ type Options struct {
 // the valid characters for the path component:
 // [A-Za-z0-9!$%&'()*+,-.:;=@_~]
 // http://stackoverflow.com/questions/4669692/valid-characters-for-directory-part-of-a-url-for-short-links
+// https://tools.ietf.org/html/rfc3986#section-3.3
 var (
 	multiSlashReg  = regexp.MustCompile(`/{2,}`)
 	wordReg        = regexp.MustCompile(`^\w+$`)
@@ -135,14 +136,14 @@ func (t *Trie) Match(path string) *Matched {
 		if i < end && path[i] != '/' {
 			continue
 		}
-		frag := path[start:i]
-		node := matchNode(parent, frag)
+		segment := path[start:i]
+		node := matchNode(parent, segment)
 		if t.ignoreCase && node == nil {
-			node = matchNode(parent, strings.ToLower(frag))
+			node = matchNode(parent, strings.ToLower(segment))
 		}
 		if node == nil {
 			// TrailingSlashRedirect: /abc/efg/ -> /abc/efg
-			if t.tsr && parent.endpoint && i == end && frag == "" {
+			if t.tsr && parent.endpoint && i == end && segment == "" {
 				matched.TSR = path[:end-1]
 				if t.fpr && fixedLen > 0 {
 					matched.FPR = matched.TSR
@@ -162,9 +163,9 @@ func (t *Trie) Match(path string) *Matched {
 				break
 			} else {
 				if parent.suffix != "" {
-					frag = frag[0 : len(frag)-len(parent.suffix)]
+					segment = segment[0 : len(segment)-len(parent.suffix)]
 				}
-				matched.Params[parent.name] = frag
+				matched.Params[parent.name] = segment
 			}
 		}
 		start = i + 1
@@ -208,21 +209,21 @@ type Matched struct {
 
 // Node represents a node on defined patterns that can be matched.
 type Node struct {
-	name, allow, pattern, frag, suffix string
-	endpoint, wildcard                 bool
-	parent                             *Node
-	varyChildren                       []*Node
-	children                           map[string]*Node
-	handlers                           map[string]interface{}
-	regex                              *regexp.Regexp
+	name, allow, pattern, segment, suffix string
+	endpoint, wildcard                    bool
+	parent                                *Node
+	varyChildren                          []*Node
+	children                              map[string]*Node
+	handlers                              map[string]interface{}
+	regex                                 *regexp.Regexp
 }
 
-func (n *Node) getFrags() string {
-	frags := n.frag
+func (n *Node) getSegments() string {
+	segments := n.segment
 	if n.parent != nil {
-		frags = n.parent.getFrags() + "/" + frags
+		segments = n.parent.getSegments() + "/" + segments
 	}
-	return frags
+	return segments
 }
 
 func (n *Node) getChild(key string) *Node {
@@ -238,7 +239,7 @@ func (n *Node) getChild(key string) *Node {
 //
 func (n *Node) Handle(method string, handler interface{}) {
 	if n.GetHandler(method) != nil {
-		panic(fmt.Errorf(`"%s" already defined`, n.getFrags()))
+		panic(fmt.Errorf(`"%s" already defined`, n.getSegments()))
 	}
 	n.handlers[method] = handler
 	if n.allow == "" {
@@ -274,34 +275,34 @@ func (n *Node) GetAllow() string {
 	return n.allow
 }
 
-func defineNode(parent *Node, frags []string, ignoreCase bool) *Node {
-	frag := frags[0]
-	frags = frags[1:]
-	child := parseNode(parent, frag, ignoreCase)
+func defineNode(parent *Node, segments []string, ignoreCase bool) *Node {
+	segment := segments[0]
+	segments = segments[1:]
+	child := parseNode(parent, segment, ignoreCase)
 
-	if len(frags) == 0 {
+	if len(segments) == 0 {
 		child.endpoint = true
 		return child
 	}
 	if child.wildcard {
-		panic(fmt.Errorf(`can't define pattern after wildcard: "%s"`, child.getFrags()))
+		panic(fmt.Errorf(`can't define pattern after wildcard: "%s"`, child.getSegments()))
 	}
-	return defineNode(child, frags, ignoreCase)
+	return defineNode(child, segments, ignoreCase)
 }
 
-func matchNode(parent *Node, frag string) (child *Node) {
-	if child = parent.getChild(frag); child != nil {
+func matchNode(parent *Node, segment string) (child *Node) {
+	if child = parent.getChild(segment); child != nil {
 		return
 	}
 	for _, child = range parent.varyChildren {
-		_frag := frag
+		_segment := segment
 		if child.suffix != "" {
-			if frag == child.suffix || !strings.HasSuffix(frag, child.suffix) {
+			if segment == child.suffix || !strings.HasSuffix(segment, child.suffix) {
 				continue
 			}
-			_frag = frag[0 : len(frag)-len(child.suffix)]
+			_segment = segment[0 : len(segment)-len(child.suffix)]
 		}
-		if child.regex != nil && !child.regex.MatchString(_frag) {
+		if child.regex != nil && !child.regex.MatchString(_segment) {
 			continue
 		}
 		return
@@ -309,37 +310,37 @@ func matchNode(parent *Node, frag string) (child *Node) {
 	return nil
 }
 
-func parseNode(parent *Node, frag string, ignoreCase bool) *Node {
-	_frag := frag
-	if doubleColonReg.MatchString(frag) {
-		_frag = frag[1:]
+func parseNode(parent *Node, segment string, ignoreCase bool) *Node {
+	_segment := segment
+	if doubleColonReg.MatchString(segment) {
+		_segment = segment[1:]
 	}
 	if ignoreCase {
-		_frag = strings.ToLower(_frag)
+		_segment = strings.ToLower(_segment)
 	}
-	if node := parent.getChild(_frag); node != nil {
+	if node := parent.getChild(_segment); node != nil {
 		return node
 	}
 
 	node := &Node{
-		frag:     frag,
+		segment:  segment,
 		parent:   parent,
 		children: make(map[string]*Node),
 		handlers: make(map[string]interface{}),
 	}
 
 	switch {
-	case frag == "":
-		parent.children[frag] = node
+	case segment == "":
+		parent.children[segment] = node
 
-	case doubleColonReg.MatchString(frag):
+	case doubleColonReg.MatchString(segment):
 		// pattern "/a/::" should match "/a/:"
 		// pattern "/a/::bc" should match "/a/:bc"
 		// pattern "/a/::/bc" should match "/a/:/bc"
-		parent.children[_frag] = node
+		parent.children[_segment] = node
 
-	case frag[0] == ':':
-		name := frag[1:]
+	case segment[0] == ':':
+		name := segment[1:]
 
 		switch name[len(name)-1] {
 		case '*':
@@ -352,7 +353,7 @@ func parseNode(parent *Node, frag string, ignoreCase bool) *Node {
 				name = name[0 : len(name)-len(suffix)]
 				node.suffix = suffix[1:]
 				if node.suffix == "" {
-					panic(fmt.Errorf(`invalid pattern: "%s"`, node.getFrags()))
+					panic(fmt.Errorf(`invalid pattern: "%s"`, node.getSegments()))
 				}
 			}
 
@@ -363,7 +364,7 @@ func parseNode(parent *Node, frag string, ignoreCase bool) *Node {
 						name = name[0:index]
 						node.regex = regexp.MustCompile(regex)
 					} else {
-						panic(fmt.Errorf(`invalid pattern: "%s"`, node.getFrags()))
+						panic(fmt.Errorf(`invalid pattern: "%s"`, node.getSegments()))
 					}
 				}
 			}
@@ -371,17 +372,17 @@ func parseNode(parent *Node, frag string, ignoreCase bool) *Node {
 
 		// name must be word characters `[0-9A-Za-z_]`
 		if !wordReg.MatchString(name) {
-			panic(fmt.Errorf(`invalid pattern: "%s"`, node.getFrags()))
+			panic(fmt.Errorf(`invalid pattern: "%s"`, node.getSegments()))
 		}
 		node.name = name
 		// check if node exists
 		for _, child := range parent.varyChildren {
 			if child.wildcard {
 				if !node.wildcard {
-					panic(fmt.Errorf(`can't define "%s" after "%s"`, node.getFrags(), child.getFrags()))
+					panic(fmt.Errorf(`can't define "%s" after "%s"`, node.getSegments(), child.getSegments()))
 				}
 				if child.name != node.name {
-					panic(fmt.Errorf(`invalid pattern name "%s", as prev defined "%s"`, node.name, child.getFrags()))
+					panic(fmt.Errorf(`invalid pattern name "%s", as prev defined "%s"`, node.name, child.getSegments()))
 				}
 				return child
 			}
@@ -393,7 +394,7 @@ func parseNode(parent *Node, frag string, ignoreCase bool) *Node {
 			if !node.wildcard && (child.regex == nil && node.regex == nil) ||
 				child.regex != nil && node.regex != nil && child.regex.String() == node.regex.String() {
 				if child.name != node.name {
-					panic(fmt.Errorf(`invalid pattern name "%s", as prev defined "%s"`, node.name, child.getFrags()))
+					panic(fmt.Errorf(`invalid pattern name "%s", as prev defined "%s"`, node.name, child.getSegments()))
 				}
 				return child
 			}
@@ -415,11 +416,11 @@ func parseNode(parent *Node, frag string, ignoreCase bool) *Node {
 			})
 		}
 
-	case frag[0] == '*' || frag[0] == '(' || frag[0] == ')':
-		panic(fmt.Errorf(`invalid pattern: "%s"`, node.getFrags()))
+	case segment[0] == '*' || segment[0] == '(' || segment[0] == ')':
+		panic(fmt.Errorf(`invalid pattern: "%s"`, node.getSegments()))
 
 	default:
-		parent.children[_frag] = node
+		parent.children[_segment] = node
 	}
 
 	return node
