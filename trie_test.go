@@ -495,6 +495,28 @@ func TestGearTrieMatch(t *testing.T) {
 		EqualPtr(t, child, res.Node)
 	})
 
+	t.Run("complex regexp pattern", func(t *testing.T) {
+		assert := assert.New(t)
+
+		tr := New()
+		node1 := tr.Define("/thumbnail/:fileKey/w/:width/h/:height")
+		node2 := tr.Define("/thumbnail/:h1(^\\w{2}$)/:h2/:h3/w/:width/h/:height")
+
+		res := tr.Match("/thumbnail/50c32afae8cf1439d35a87e6/w/200/h/200")
+		EqualPtr(t, node1, res.Node)
+		assert.Equal("50c32afae8cf1439d35a87e6", res.Params["fileKey"])
+		assert.Equal("200", res.Params["width"])
+		assert.Equal("200", res.Params["height"])
+
+		res = tr.Match("/thumbnail/50/c3/2afae8cf1439d35a87e6/w/200/h/200")
+		EqualPtr(t, node2, res.Node)
+		assert.Equal("50", res.Params["h1"])
+		assert.Equal("c3", res.Params["h2"])
+		assert.Equal("2afae8cf1439d35a87e6", res.Params["h3"])
+		assert.Equal("200", res.Params["width"])
+		assert.Equal("200", res.Params["height"])
+	})
+
 	t.Run("regexp pattern with suffix", func(t *testing.T) {
 		assert := assert.New(t)
 
