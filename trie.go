@@ -9,7 +9,7 @@ import (
 )
 
 // Version is trie-mux version
-const Version = "1.4.1"
+const Version = "1.4.2"
 
 // Options is options for Trie.
 type Options struct {
@@ -273,6 +273,11 @@ func (n *Node) GetHandler(method string) interface{} {
 //
 func (n *Node) GetAllow() string {
 	return n.allow
+}
+
+// GetPattern returns pattern defined on the node
+func (n *Node) GetPattern() string {
+	return n.pattern
 }
 
 func defineNode(parent *Node, segments []string, ignoreCase bool) *Node {

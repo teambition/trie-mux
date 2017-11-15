@@ -504,6 +504,8 @@ func TestGearTrieMatch(t *testing.T) {
 
 		res := tr.Match("/thumbnail/50c32afae8cf1439d35a87e6/w/200/h/200")
 		EqualPtr(t, node1, res.Node)
+		assert.Equal("/thumbnail/:fileKey/w/:width/h/:height", res.Node.GetPattern())
+		assert.Equal("/thumbnail/:h1(^\\w{2}$)/:h2/:h3/w/:width/h/:height", node2.GetPattern())
 		assert.Equal("50c32afae8cf1439d35a87e6", res.Params["fileKey"])
 		assert.Equal("200", res.Params["width"])
 		assert.Equal("200", res.Params["height"])
