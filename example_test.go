@@ -6,36 +6,36 @@ import (
 	"net/http"
 	"net/http/httptest"
 
-	"github.com/teambition/gear"
 	"github.com/teambition/trie-mux/mux"
 )
 
-func ExampleGear() {
-	app := gear.New()
+// func ExampleGear() {
+// 	app := gear.New()
 
-	router := gear.NewRouter()
-	router.Get("/", func(ctx *gear.Context) error {
-		return ctx.HTML(200, "<h1>Hello, Gear!</h1>")
-	})
-	router.Get("/view/:view", func(ctx *gear.Context) error {
-		view := ctx.Param("view")
-		if view == "" {
-			return &gear.Error{Code: 400, Msg: "Invalid view"}
-		}
-		return ctx.HTML(200, "View: "+view)
-	})
+// 	router := gear.NewRouter()
+// 	router.Get("/", func(ctx *gear.Context) error {
+// 		return ctx.HTML(200, "<h1>Hello, Gear!</h1>")
+// 	})
+// 	router.Get("/view/:view", func(ctx *gear.Context) error {
+// 		view := ctx.Param("view")
+// 		if view == "" {
+// 			return gear.ErrBadRequest.WithMsg("Invalid view")
+// 		}
+// 		return ctx.HTML(200, "View: "+view)
+// 	})
 
-	app.UseHandler(router)
-	srv := app.Start(":3000")
-	defer srv.Close()
+// 	app.UseHandler(router)
+// 	srv := app.Start(":3000")
+// 	defer srv.Close()
 
-	res, _ := http.Get("http://" + srv.Addr().String() + "/view/users")
-	body, _ := ioutil.ReadAll(res.Body)
-	res.Body.Close()
+// 	res, _ := http.Get("http://" + srv.Addr().String() + "/view/users")
+// 	body, _ := ioutil.ReadAll(res.Body)
+// 	res.Body.Close()
 
-	fmt.Println(res.StatusCode, string(body))
-	// Output: 200 View: users
-}
+// 	fmt.Println(res.StatusCode, string(body))
+// 	// Output:
+// 	// 200 View: users
+// }
 
 func ExampleMux() {
 	router := mux.New()
