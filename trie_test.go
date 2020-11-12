@@ -1,6 +1,7 @@
 package trie
 
 import (
+	"fmt"
 	"reflect"
 	"testing"
 
@@ -703,7 +704,7 @@ func TestGearTrieNode(t *testing.T) {
 		tr := New()
 		tr.Define("/").Handle("GET", handler)
 		tr.Define("/").Handle("PUT", handler)
-		tr.Define("/api").Handle("GET", handler)
+		tr.Define("/api?pageSize=&pageToken=").Handle("GET", handler)
 
 		assert.Panics(func() {
 			tr.Define("/").Handle("GET", handler)
@@ -721,5 +722,9 @@ func TestGearTrieNode(t *testing.T) {
 
 		EqualPtr(t, handler, tr.Match("/api").Node.GetHandler("GET").(func()))
 		assert.Equal("GET", tr.Match("/api").Node.GetAllow())
+
+		for _, node := range tr.GetEndpoints() {
+			fmt.Println(node.GetMethods(), node.GetPattern())
+		}
 	})
 }

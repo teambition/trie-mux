@@ -9,7 +9,7 @@ import (
 )
 
 // Version is trie-mux version
-const Version = "1.4.2"
+const Version = "1.5.0"
 
 // Options is options for Trie.
 type Options struct {
@@ -81,6 +81,20 @@ type Trie struct {
 	root       *Node
 }
 
+// GetEndpoints returns all endpoint nodes.
+func (t *Trie) GetEndpoints() []*Node {
+	endpoints := make([]*Node, 0)
+	if t.root.endpoint {
+		endpoints = append(endpoints, t.root)
+	}
+	for _, n := range t.root.GetDescendants() {
+		if n.endpoint {
+			endpoints = append(endpoints, n)
+		}
+	}
+	return endpoints
+}
+
 // Define define a pattern on the trie and returns the endpoint node for the pattern.
 //
 //  trie := New()
@@ -105,6 +119,9 @@ func (t *Trie) Define(pattern string) *Node {
 	}
 
 	_pattern := strings.TrimPrefix(pattern, "/")
+	if i := strings.IndexRune(_pattern, '?'); i > -1 {
+		_pattern = _pattern[:i]
+	}
 	node := defineNode(t.root, strings.Split(_pattern, "/"), t.ignoreCase)
 
 	if node.pattern == "" {
@@ -280,6 +297,29 @@ func (n *Node) GetPattern() string {
 	return n.pattern
 }
 
+// GetMethods returns methods defined on the node
+func (n *Node) GetMethods() []string {
+	methods := make([]string, 0, len(n.handlers))
+	for key := range n.handlers {
+		methods = append(methods, key)
+	}
+	return methods
+}
+
+// GetDescendants returns all descendants nodes.
+func (n *Node) GetDescendants() []*Node {
+	nodes := make([]*Node, 0)
+	for _, n := range n.children {
+		nodes = append(nodes, n)
+		nodes = append(nodes, n.GetDescendants()...)
+	}
+	for _, n := range n.varyChildren {
+		nodes = append(nodes, n)
+		nodes = append(nodes, n.GetDescendants()...)
+	}
+	return nodes
+}
+
 func defineNode(parent *Node, segments []string, ignoreCase bool) *Node {
 	segment := segments[0]
 	segments = segments[1:]
@@ -424,6 +464,9 @@ func parseNode(parent *Node, segment string, ignoreCase bool) *Node {
 	case segment[0] == '*' || segment[0] == '(' || segment[0] == ')':
 		panic(fmt.Errorf(`invalid pattern: "%s"`, node.getSegments()))
 
+	case segment[len(segment)-1] == '*':
+		node.wildcard = true
+		parent.children[_segment[0:len(_segment)-1]] = node
 	default:
 		parent.children[_segment] = node
 	}

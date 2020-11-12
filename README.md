@@ -182,6 +182,15 @@ type := matched.Params("type")
 id   := matched.Params("ID")
 ```
 
+Url query string with `?` can be provided when defining trie, but it will be ignored.
+
+Defined: `/files?pageSize=&pageToken=`
+Equal to: `/files`
+```
+/files                           matched, query string will be ignored
+/files/LICENSE                   no match
+```
+
 ## Documentation
 
 https://godoc.org/github.com/teambition/trie-mux
