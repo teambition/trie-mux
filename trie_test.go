@@ -608,6 +608,27 @@ func TestGearTrieMatch(t *testing.T) {
 		EqualPtr(t, node, res.Node)
 		assert.Equal("X", res.Params["Name"])
 		assert.Equal("", res.Params["name"])
+
+		tr = New(Options{IgnoreCase: true})
+		node1 := tr.Define("/tasks/:taskId")
+		node2 := tr.Define("/tasks/batchGet")
+
+		res = tr.Match("/tasks/batchGet")
+		EqualPtr(t, node2, res.Node)
+
+		res = tr.Match("/tasks/batchget")
+		EqualPtr(t, node2, res.Node)
+
+		tr = New(Options{IgnoreCase: false})
+		node1 = tr.Define("/tasks/:taskId")
+		node2 = tr.Define("/tasks/batchGet")
+
+		res = tr.Match("/tasks/batchGet")
+		EqualPtr(t, node2, res.Node)
+
+		res = tr.Match("/tasks/batchget")
+		EqualPtr(t, node1, res.Node)
+		assert.Equal("batchget", res.Params["taskId"])
 	})
 
 	t.Run("FixedPathRedirect option", func(t *testing.T) {
@@ -693,6 +714,24 @@ func TestGearTrieMatch(t *testing.T) {
 		assert.Nil(tr.Match("/abc//xyz").Node)
 		assert.Equal("", tr.Match("/abc//xyz").TSR)
 		assert.Equal("/abc/xyz/", tr.Match("/abc//xyz").FPR)
+
+		tr = New(Options{TrailingSlashRedirect: false})
+		node1 = tr.Define("/abc/:name")
+		node2 = tr.Define("/abc")
+
+		EqualPtr(t, node1, tr.Match("/abc/efg").Node)
+		assert.Equal("", tr.Match("/abc/efg").TSR)
+		assert.Nil(tr.Match("/abc/").Node)
+		assert.Equal("", tr.Match("/abc/").TSR)
+
+		tr = New(Options{TrailingSlashRedirect: true})
+		node1 = tr.Define("/abc/:name")
+		node2 = tr.Define("/abc")
+
+		EqualPtr(t, node1, tr.Match("/abc/efg").Node)
+		assert.Equal("", tr.Match("/abc/efg").TSR)
+		assert.Nil(tr.Match("/abc/").Node)
+		assert.Equal("/abc", tr.Match("/abc/").TSR)
 	})
 }
 

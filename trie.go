@@ -9,7 +9,7 @@ import (
 )
 
 // Version is trie-mux version
-const Version = "1.5.1"
+const Version = "1.5.2"
 
 // Options is options for Trie.
 type Options struct {
@@ -337,7 +337,7 @@ func defineNode(parent *Node, segments []string, ignoreCase bool) *Node {
 }
 
 func matchNode(parent *Node, segment string) (child *Node) {
-	if child = parent.getChild(segment); child != nil {
+	if child = parent.getChild(segment); child != nil || segment == "" {
 		return
 	}
 	for _, child = range parent.varyChildren {

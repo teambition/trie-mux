@@ -1,6 +1,6 @@
 module github.com/teambition/trie-mux
 
-go 1.15
+go 1.16
 
 require (
 	github.com/dimfeld/httptreemux v5.0.1+incompatible
