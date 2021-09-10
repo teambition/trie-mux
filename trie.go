@@ -9,7 +9,7 @@ import (
 )
 
 // Version is trie-mux version
-const Version = "1.5.0"
+const Version = "1.5.1"
 
 // Options is options for Trie.
 type Options struct {
@@ -154,10 +154,11 @@ func (t *Trie) Match(path string) *Matched {
 			continue
 		}
 		segment := path[start:i]
-		node := matchNode(parent, segment)
-		if t.ignoreCase && node == nil {
-			node = matchNode(parent, strings.ToLower(segment))
+		_segment := segment
+		if t.ignoreCase {
+			_segment = strings.ToLower(segment)
 		}
+		node := matchNode(parent, _segment)
 		if node == nil {
 			// TrailingSlashRedirect: /abc/efg/ -> /abc/efg
 			if t.tsr && parent.endpoint && i == end && segment == "" {
